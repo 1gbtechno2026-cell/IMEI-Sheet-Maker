@@ -7,7 +7,7 @@
   "author": "Invoice Maker",
   "license": "UNLICENSED",
   "scripts": {
-    "postinstall": "npm install --prefix frontend",
+    "postinstall": "cd frontend && npm install",
     "build:electron": "tsc -p electron/tsconfig.json",
     "dev:backend": "cd backend && .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
     "dev:backend:posix": "cd backend && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",

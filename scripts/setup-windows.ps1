@@ -7,7 +7,7 @@ Write-Host "==> Installing root npm packages (Electron)..."
 npm install
 
 Write-Host "==> Installing frontend npm packages..."
-npm install --prefix frontend
+Push-Location frontend; npm install; Pop-Location
 
 Write-Host "==> Creating Python 3.11 venv in backend\..."
 Set-Location (Join-Path $Root "backend")

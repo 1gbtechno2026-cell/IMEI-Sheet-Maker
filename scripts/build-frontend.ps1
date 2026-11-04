@@ -5,7 +5,7 @@ Set-Location $Root
 
 Write-Host "==> Installing frontend deps (if needed)..."
 if (-not (Test-Path ".\frontend\node_modules")) {
-  npm install --prefix frontend
+  Push-Location frontend; npm install; Pop-Location
 }
 
 Write-Host "==> Building Electron main (TypeScript)..."

@@ -18,9 +18,9 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -28,7 +28,7 @@ jobs:
             package-lock.json
             frontend/package-lock.json
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -63,7 +63,7 @@ jobs:
       - name: Build NSIS installer
         run: npx electron-builder --win nsis --config electron-builder.yml --publish never
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: InvoiceMaker-Windows
           path: release/*.exe
@@ -81,9 +81,9 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false" # unsigned build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -91,7 +91,7 @@ jobs:
             package-lock.json
             frontend/package-lock.json
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -117,7 +117,7 @@ jobs:
       - name: Build dmg + zip (arm64)
         run: npx electron-builder --mac dmg zip --arm64 --config electron-builder.yml --publish never
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: InvoiceMaker-macOS
           path: |
