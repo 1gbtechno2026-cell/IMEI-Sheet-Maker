@@ -46,7 +46,9 @@ jobs:
       - name: Install npm packages
         shell: bash
         run: |
-          npm ci 2>&1 | tee npm-ci.log; code=${PIPESTATUS[0]}
+          set +e
+          npm ci > npm-ci.log 2>&1; code=$?
+          cat npm-ci.log
           if [ $code -ne 0 ]; then
             # Surface the tail of the log as a public annotation.
             echo "::error title=npm ci failed::$(tail -40 npm-ci.log | sed 's/%/%25/g' | tr '\n' '|' )"
