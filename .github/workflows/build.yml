@@ -44,7 +44,14 @@ jobs:
           if (-not (Test-Path dist\invoice-maker-backend\invoice-maker-backend.exe)) { throw "backend exe missing" }
 
       - name: Install npm packages
-        run: npm ci
+        shell: bash
+        run: |
+          npm ci 2>&1 | tee npm-ci.log; code=${PIPESTATUS[0]}
+          if [ $code -ne 0 ]; then
+            # Surface the tail of the log as a public annotation.
+            echo "::error title=npm ci failed::$(tail -40 npm-ci.log | sed 's/%/%25/g' | tr '\n' '|' )"
+            exit $code
+          fi
 
       - name: Build Electron + frontend
         run: |
