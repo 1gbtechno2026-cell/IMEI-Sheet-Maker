@@ -11,7 +11,17 @@ One shared codebase for both platforms. Each platform's installer must be built 
 | macOS | **[README-macOS.md](README-macOS.md)** | `.dmg` + `.zip` |
 | Windows | **[README-Windows.md](README-Windows.md)** | NSIS `Setup.exe` |
 
-## Quick start
+## Download the app (no setup needed)
+
+GitHub builds the installers automatically (`.github/workflows/build.yml`):
+
+| What | When | Where to download |
+|------|------|-------------------|
+| Windows `.exe` | every push to `main` | **Actions** tab → latest "Build installers" run → **Artifacts** → `InvoiceMaker-Windows` |
+| Windows `.exe` + macOS `.dmg` | push a tag, e.g. `git tag v0.9.1 && git push origin v0.9.1` | **Releases** page |
+| Both | **Actions** → "Build installers" → **Run workflow** | Artifacts of that run |
+
+## Quick start (development)
 
 ```bash
 # macOS

@@ -1,0 +1,125 @@
+# Builds installers on GitHub's servers.
+#   - Windows .exe: on every push to main, on version tags, or manually.
+#   - macOS .dmg/.zip: on version tags or manually (macOS minutes cost more).
+# Download results from the Actions run page ("Artifacts"), or from the
+# Releases page when you push a tag like v0.9.1.
+name: Build installers
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-build.txt
+
+      - name: Build backend (PyInstaller)
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+          .\.venv\Scripts\python.exe -m PyInstaller --noconfirm invoice-maker-backend.spec
+          if (-not (Test-Path dist\invoice-maker-backend\invoice-maker-backend.exe)) { throw "backend exe missing" }
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Build Electron + frontend
+        run: |
+          npm run build:electron
+          npm run build:frontend
+
+      - name: Build NSIS installer
+        run: npx electron-builder --win nsis --config electron-builder.yml --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InvoiceMaker-Windows
+          path: release/*.exe
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*.exe
+
+  macos:
+    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+    runs-on: macos-latest
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false" # unsigned build
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/requirements-build.txt
+
+      - name: Build backend (PyInstaller)
+        working-directory: backend
+        run: |
+          python -m venv .venv
+          ./.venv/bin/python -m pip install --upgrade pip
+          ./.venv/bin/python -m pip install -r requirements-build.txt
+          ./.venv/bin/python -m PyInstaller --noconfirm invoice-maker-backend.spec
+          test -f dist/invoice-maker-backend/invoice-maker-backend
+
+      - name: Install npm packages
+        run: npm ci
+
+      - name: Build Electron + frontend
+        run: |
+          npm run build:electron
+          npm run build:frontend
+
+      - name: Build dmg + zip (arm64)
+        run: npx electron-builder --mac dmg zip --arm64 --config electron-builder.yml --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: InvoiceMaker-macOS
+          path: |
+            release/*.dmg
+            release/*.zip
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.dmg
+            release/*.zip
