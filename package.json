@@ -1,0 +1,47 @@
+{
+  "name": "invoice-maker",
+  "version": "0.9.0",
+  "private": true,
+  "description": "Offline Invoice Maker — Electron + React + FastAPI sidecar (Windows + macOS)",
+  "main": "dist-electron/main.js",
+  "author": "Invoice Maker",
+  "license": "UNLICENSED",
+  "scripts": {
+    "postinstall": "npm install --prefix frontend",
+    "build:electron": "tsc -p electron/tsconfig.json",
+    "dev:backend": "cd backend && .venv/Scripts/python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:backend:posix": "cd backend && .venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload",
+    "dev:web": "npm --prefix frontend run dev",
+    "dev:renderer": "npm --prefix frontend run dev",
+    "dev": "npm run build:electron && concurrently -k -n vite,electron -c cyan,magenta \"npm run dev:renderer\" \"wait-on http://127.0.0.1:5174 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron .\"",
+    "build:frontend": "npm --prefix frontend run build",
+    "build:backend:win": "powershell -ExecutionPolicy Bypass -File ./scripts/build-backend.ps1",
+    "build:installer": "electron-builder --win nsis --config electron-builder.yml",
+    "build:all:win": "powershell -ExecutionPolicy Bypass -File ./scripts/build-all.ps1",
+    "build:macos": "bash ./scripts/build-macos.sh",
+    "migrate": "cd backend && .venv/Scripts/python.exe -m alembic upgrade head",
+    "migrate:posix": "cd backend && .venv/bin/python -m alembic upgrade head",
+    "verify:packaging": "bash scripts/verify-packaging-linux.sh"
+  },
+  "keywords": [
+    "invoice",
+    "electron",
+    "fastapi",
+    "offline",
+    "macos",
+    "windows"
+  ],
+  "build": {
+    "appId": "com.invoicemaker.app",
+    "productName": "Invoice Maker"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "concurrently": "^10.0.6",
+    "cross-env": "^10.1.0",
+    "electron": "^45.2.1",
+    "electron-builder": "^26.18.0",
+    "typescript": "^5.9.3",
+    "wait-on": "^9.5.1"
+  }
+}

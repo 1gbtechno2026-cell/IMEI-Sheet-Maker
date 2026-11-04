@@ -1,0 +1,15 @@
+# Normalize line endings so the repo works when cloned on macOS and Windows.
+* text=auto
+
+# Shell scripts must keep LF or bash fails on macOS/Linux.
+*.sh   text eol=lf
+
+# PowerShell scripts use CRLF on Windows.
+*.ps1  text eol=crlf
+
+# Binary files
+*.xlsx binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.icns binary

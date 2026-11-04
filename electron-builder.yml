@@ -1,0 +1,86 @@
+# electron-builder — dual platform (Windows NSIS + macOS dmg/zip)
+#
+# Windows (on Windows + Python 3.11):
+#   .\scripts\build-all.ps1
+#
+# macOS (on a Mac — cannot cross-build Mac PyInstaller binary from Linux):
+#   ./scripts/build-macos.sh
+#
+# App data is NEVER wiped by install/upgrade:
+#   Windows: %APPDATA%\InvoiceMaker\
+#   macOS:   ~/Library/Application Support/InvoiceMaker/
+
+appId: com.invoicemaker.app
+productName: Invoice Maker
+copyright: Copyright © Invoice Maker
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - package.json
+  - dist-electron/**/*
+  - frontend/dist/**/*
+  - "!**/*.map"
+  - "!**/node_modules/**"
+  - "!backend/**"
+  - "!frontend/node_modules/**"
+  - "!frontend/src/**"
+  - "!scripts/**"
+  - "!sample-data/**"
+  - "!release/**"
+
+# Bundled FastAPI sidecar (PyInstaller onedir output for the *host* OS)
+extraResources:
+  - from: backend/dist/invoice-maker-backend
+    to: backend
+    filter:
+      - "**/*"
+
+# --- Windows ---
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: InvoiceMaker-Setup-${version}-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Invoice Maker
+  # Critical: do not delete %APPDATA%\InvoiceMaker (backups, db, signatures)
+  deleteAppDataOnUninstall: false
+
+# --- macOS ---
+mac:
+  category: public.app-category.business
+  # Build on a Mac. Prefer current arch; use --arm64 / --x64 explicitly if needed.
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+    - target: zip
+      arch:
+        - arm64
+        - x64
+  artifactName: InvoiceMaker-${version}-mac-${arch}.${ext}
+  # Optional later: hardenedRuntime + notarize for Gatekeeper distribution
+  # hardenedRuntime: true
+  # gatekeeperAssess: false
+  # entitlements: build/entitlements.mac.plist
+  # entitlementsInherit: build/entitlements.mac.plist
+
+dmg:
+  artifactName: InvoiceMaker-${version}-mac-${arch}.${ext}
+
+asar: true
+asarUnpack: []
+
+extraMetadata:
+  main: dist-electron/main.js

@@ -1,0 +1,69 @@
+# ---------- Node / Electron ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.eslintcache
+
+# Build output
+dist-electron/
+frontend/dist/
+frontend/dist-ssr/
+release/
+out/
+*.tsbuildinfo
+
+# ---------- Python backend ----------
+backend/.venv/
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.pyo
+backend/build/
+backend/dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+
+# ---------- Local data / secrets ----------
+# App data (DB, JWT secret, backups) lives in the OS app-data folder,
+# but never commit stray copies.
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+jwt_secret*
+backups/
+
+# ---------- Logs ----------
+logs/
+*.log
+
+# ---------- OS files ----------
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---------- Editors ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.sw?
+*~
