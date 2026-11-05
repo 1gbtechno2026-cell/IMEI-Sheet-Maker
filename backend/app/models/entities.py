@@ -130,6 +130,8 @@ class Invoice(Base):
     pdf_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     source_file_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # classic | corporate | executive — the look of the Excel and PDF (app.sheet_styles)
+    sheet_style: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
     updated_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)

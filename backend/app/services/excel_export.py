@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from app.pdf.generator import _box_span
+from app.sheet_styles import SheetStyle, get_style
 
 SHEET_TITLE = "IMEI DATA SHEET"
 SUMMARY_MARKER = "SUMMARY"
@@ -55,22 +56,23 @@ def _write_data_sheet(
     international: bool,
     details: list[tuple[str, str]],
     models: list[dict[str, Any]],
+    style: SheetStyle,
 ) -> None:
     """models: name, color, quantity, per_box, country, boxes, imeis (None = blank template)."""
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
     from openpyxl.worksheet.datavalidation import DataValidation
 
-    thin = Border(
-        left=Side(style="thin", color="B0B0B0"),
-        right=Side(style="thin", color="B0B0B0"),
-        top=Side(style="thin", color="B0B0B0"),
-        bottom=Side(style="thin", color="B0B0B0"),
-    )
-    bold = Font(bold=True, name="Calibri", size=11)
-    header_fill = PatternFill("solid", fgColor="F2F2F2")
-    section_fill = PatternFill("solid", fgColor="1F2937")
-    section_font = Font(bold=True, name="Calibri", size=11, color="FFFFFF")
+    side = Side(style="thin", color=style.excel_border)
+    thin = Border(left=side, right=side, top=side, bottom=side)
+    font = style.excel_font
+    plain = Font(name=font, size=11)
+    bold = Font(bold=True, name=font, size=11)
+    header_font = Font(bold=True, name=font, size=11, color=style.excel_header_text)
+    header_fill = PatternFill("solid", fgColor=style.excel_header_fill)
+    section_fill = PatternFill("solid", fgColor=style.excel_section_fill)
+    section_font = Font(bold=True, name=font, size=11, color="FFFFFF")
+    band_fill = PatternFill("solid", fgColor=style.excel_band_fill) if style.excel_band_fill else None
     blank_fill = PatternFill("solid", fgColor="FFF8E5")
     center = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
@@ -87,11 +89,11 @@ def _write_data_sheet(
             cell.font = section_font
 
     row = 1
-    sheet.cell(row, 1, SHEET_TITLE).font = Font(bold=True, name="Calibri", size=14)
+    sheet.cell(row, 1, SHEET_TITLE).font = Font(bold=True, name=font, size=14, color=style.excel_section_fill)
     row += 1
     for label, value in details:
         sheet.cell(row, 1, label).font = bold
-        sheet.cell(row, 2, value)
+        sheet.cell(row, 2, value).font = plain
         row += 1
     row += 1
 
@@ -105,14 +107,14 @@ def _write_data_sheet(
     row += 1
     for col, text in enumerate(head, start=1):
         cell = sheet.cell(row, col, text)
-        cell.font = bold
+        cell.font = header_font
         cell.fill = header_fill
         cell.border = thin
         cell.alignment = center
     row += 1
     total_units = 0
     total_boxes = 0
-    for model in models:
+    for line_no, model in enumerate(models):
         line: list[Any] = [model["name"], model.get("color") or None, model["quantity"]]
         total_units += model["quantity"]
         if has_box:
@@ -123,7 +125,10 @@ def _write_data_sheet(
             line += [model.get("country") or None]
         for col, value in enumerate(line, start=1):
             cell = sheet.cell(row, col, value)
+            cell.font = plain
             cell.border = thin
+            if band_fill and line_no % 2:
+                cell.fill = band_fill
             if col > 2:
                 cell.alignment = center
         row += 1
@@ -160,7 +165,7 @@ def _write_data_sheet(
     for model, start in blocks:
         for offset, kind in enumerate(kinds):
             cell = sheet.cell(header_row, start + offset, titles[kind])
-            cell.font = bold
+            cell.font = header_font
             cell.fill = header_fill
             cell.border = thin
             cell.alignment = center
@@ -185,12 +190,16 @@ def _write_data_sheet(
                 elif kind == "color":
                     value = model.get("color") or None
                 elif kind == "country":
+                    # On every row, so each IMEI reads complete on its own.
                     country = countries[index] if index < len(countries) else model.get("country")
-                    value = (country or None) if new_box else None
+                    value = country or None
                 else:
                     value = imeis[index] if imeis is not None else None
                 cell = sheet.cell(data_row, start + offset, value)
+                cell.font = plain
                 cell.border = thin
+                if band_fill and index % 2:
+                    cell.fill = band_fill
                 if kind == "imei":
                     cell.number_format = "@"
                     if imeis is None:
@@ -249,6 +258,7 @@ def build_data_template(
     invoice_no: str,
     invoice_date: Any,
     models: list[dict[str, Any]],
+    sheet_style: str | None = None,
 ) -> bytes:
     """Blank sheet from Step 3: summary, serial and box numbers, model and colour filled in; IMEIs empty."""
     international = invoice_type == "INTERNATIONAL"
@@ -268,8 +278,11 @@ def build_data_template(
             }
         )
     details = _details(seller_name, buyer_name, invoice_no, invoice_date)
+    style = get_style(sheet_style)
     return _save(
-        lambda sheet: _write_data_sheet(sheet, international=international, details=details, models=blocks)
+        lambda sheet: _write_data_sheet(
+            sheet, international=international, details=details, models=blocks, style=style
+        )
     )
 
 
@@ -299,8 +312,11 @@ def build_invoice_excel(invoice: Any, items: list[Any]) -> bytes:
         getattr(invoice, "invoice_no", "") or "",
         getattr(invoice, "invoice_date", None),
     )
+    style = get_style(getattr(invoice, "sheet_style", None))
     return _save(
-        lambda sheet: _write_data_sheet(sheet, international=international, details=details, models=blocks)
+        lambda sheet: _write_data_sheet(
+            sheet, international=international, details=details, models=blocks, style=style
+        )
     )
 
 

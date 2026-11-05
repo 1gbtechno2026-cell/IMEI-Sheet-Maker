@@ -70,6 +70,7 @@ def create_draft(
     notes: str | None,
     source_file_name: str | None,
     rows: list[dict[str, Any]],
+    sheet_style: str | None = None,
 ) -> Invoice:
     if seller_id == buyer_id:
         raise ValueError("Seller and buyer must be different")
@@ -106,6 +107,7 @@ def create_draft(
         pdf_path=None,
         source_file_name=source_file_name,
         notes=None,
+        sheet_style=sheet_style,
         created_by=user.id,
         updated_by=user.id,
     )
@@ -243,6 +245,7 @@ def snapshot_invoice(invoice: Invoice) -> dict[str, Any]:
         "status": invoice.status,
         "notes": invoice.notes,
         "source_file_name": invoice.source_file_name,
+        "sheet_style": invoice.sheet_style,
         "is_deleted": invoice.is_deleted,
         "items": items,
     }
@@ -264,6 +267,7 @@ def update_invoice(
     source_file_name: str | None,
     rows: list[dict[str, Any]],
     regenerate_pdf: bool = True,
+    sheet_style: str | None = None,
 ) -> Invoice:
     """Edit invoice fields/items; keep invoice_no; audit before/after; optionally regenerate PDF."""
     from app.services import audit as audit_service
@@ -308,6 +312,8 @@ def update_invoice(
     invoice.notes = None
     if source_file_name is not None:
         invoice.source_file_name = source_file_name
+    if sheet_style is not None:
+        invoice.sheet_style = sheet_style
     invoice.updated_by = user.id
 
     # Replace line items
@@ -484,6 +490,7 @@ def invoice_to_out(invoice: Invoice, item_count: int | None = None, summary: lis
         "pdf_path": invoice.pdf_path,
         "source_file_name": invoice.source_file_name,
         "notes": invoice.notes,
+        "sheet_style": invoice.sheet_style or "classic",
         "is_deleted": bool(getattr(invoice, "is_deleted", False)),
         "created_by": invoice.created_by,
         "item_count": item_count,
@@ -537,6 +544,7 @@ def _describe_audit(action: str, before: dict[str, Any] | None, after: dict[str,
         "buyer_id": "Buyer",
         "invoice_type": "Type",
         "source_file_name": "File",
+        "sheet_style": "Style",
     }
     for key, label in labels.items():
         if before.get(key) != after.get(key):

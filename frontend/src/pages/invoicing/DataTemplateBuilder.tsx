@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
-import { downloadDataTemplate, type InvoiceType } from "../../api/invoices";
+import { downloadDataTemplate, type InvoiceType, type SheetStyle } from "../../api/invoices";
 import { templateStorageKey } from "../../lib/sheetStorage";
+import { StylePicker } from "./StylePicker";
 
 type TemplateLine = {
   id: string;
@@ -20,6 +21,8 @@ type Props = {
   invoiceDate: string;
   /** Steps 1–2 not finished yet; the template can still be made, the header is just blank. */
   headerWarning: string | null;
+  sheetStyle: SheetStyle;
+  onSheetStyleChange: (style: SheetStyle) => void;
 };
 
 const storageKey = templateStorageKey;
@@ -44,7 +47,16 @@ function positiveInt(value: string): number | null {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoiceNo, invoiceDate, headerWarning }: Props) {
+export function DataTemplateBuilder({
+  invoiceType,
+  sellerName,
+  buyerName,
+  invoiceNo,
+  invoiceDate,
+  headerWarning,
+  sheetStyle,
+  onSheetStyleChange,
+}: Props) {
   const international = invoiceType === "INTERNATIONAL";
   const [lines, setLines] = useState<TemplateLine[]>(() => loadSaved(invoiceType));
   const [error, setError] = useState("");
@@ -107,6 +119,7 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
         buyer_name: buyerName,
         invoice_no: invoiceNo,
         invoice_date: invoiceDate,
+        sheet_style: sheetStyle,
         models: used.map((line) => ({
           model_no: line.name.trim().replace(/\s+/g, " "),
           color: line.color.trim().toUpperCase() || null,
@@ -226,6 +239,13 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-2">
+        <p className="text-sm text-[var(--muted)]">
+          Sheet style — used for this template and for the Excel and PDF made from it.
+        </p>
+        <StylePicker value={sheetStyle} onChange={onSheetStyleChange} />
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

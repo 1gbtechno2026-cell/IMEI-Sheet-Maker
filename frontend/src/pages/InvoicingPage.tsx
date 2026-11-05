@@ -10,6 +10,7 @@ import {
   type DraftInvoice,
   type InvoiceRow,
   type InvoiceType,
+  type SheetStyle,
   type ParseUploadResult,
 } from "../api/invoices";
 import { useInvoiceMode } from "../auth/ModeContext";
@@ -36,6 +37,8 @@ function todayISO() {
  */
 const PAGE_KEY = "imeiDataMaker.sheetPage";
 const uploadKey = (type: InvoiceType) => `imeiDataMaker.upload.${type}`;
+// The chosen style is a preference: it outlives Reset and finished sheets.
+const STYLE_KEY = "imeiDataMaker.sheetStyle";
 const MODES: InvoiceType[] = ["LOCAL", "INTERNATIONAL"];
 
 type SavedPage = {
@@ -127,6 +130,7 @@ export function InvoicingPage() {
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<DraftInvoice | null>(null);
   const [source, setSource] = useState<"upload" | "scan">(initial?.source ?? "upload");
+  const [sheetStyle, setSheetStyle] = useState<SheetStyle>(() => readJson<SheetStyle>(STYLE_KEY) ?? "classic");
   const [sheetSummary, setSheetSummary] = useState<SavedUpload["sheetSummary"]>(null);
   // Bumped by Reset to remount Step 3, the scan grid and the file picker empty.
   const [resetKey, setResetKey] = useState(0);
@@ -151,6 +155,8 @@ export function InvoicingPage() {
     };
     writeJson(PAGE_KEY, page);
   }, [sellerId, seller, sellerGstId, buyerId, buyer, buyerGstId, invoiceNo, invoiceDate, source, saved]);
+
+  useEffect(() => writeJson(STYLE_KEY, sheetStyle), [sheetStyle]);
 
   const runValidate = useCallback(
     async (nextRows: InvoiceRow[]) => {
@@ -346,6 +352,7 @@ export function InvoicingPage() {
         seller_gst_id: sellerGstId,
         buyer_gst_id: buyerGstId,
         invoice_date: invoiceDate,
+        sheet_style: sheetStyle,
         source_file_name: "Scanned in app",
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
@@ -395,6 +402,7 @@ export function InvoicingPage() {
         seller_gst_id: sellerGstId,
         buyer_gst_id: buyerGstId,
         invoice_date: invoiceDate,
+        sheet_style: sheetStyle,
         source_file_name: fileName,
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
@@ -533,6 +541,8 @@ export function InvoicingPage() {
         invoiceNo={invoiceNo}
         invoiceDate={invoiceDate}
         headerWarning={headerError()}
+        sheetStyle={sheetStyle}
+        onSheetStyleChange={setSheetStyle}
       />
 
       <section className="space-y-4 surface p-5">

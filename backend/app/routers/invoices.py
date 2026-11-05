@@ -95,6 +95,7 @@ def data_template(
         invoice_no=body.invoice_no,
         invoice_date=body.invoice_date,
         models=[m.model_dump() for m in body.models],
+        sheet_style=body.sheet_style,
     )
     stem = invoice_service._safe_filename(body.invoice_no) if body.invoice_no.strip() else "imei-data"
     return Response(
@@ -182,6 +183,7 @@ def save_draft(
             currency=body.currency,
             notes=body.notes,
             source_file_name=body.source_file_name,
+            sheet_style=body.sheet_style,
             rows=[r.model_dump() for r in body.rows],
         )
     except ValueError as exc:
@@ -286,6 +288,7 @@ def update_invoice(
             currency=body.currency,
             notes=body.notes,
             source_file_name=body.source_file_name,
+            sheet_style=body.sheet_style,
             rows=[r.model_dump() for r in body.rows],
             regenerate_pdf=body.regenerate_pdf,
         )

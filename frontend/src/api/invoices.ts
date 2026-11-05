@@ -3,6 +3,23 @@ import { apiFetch, getApiBaseUrl, getStoredToken } from "./client";
 
 export type InvoiceType = "LOCAL" | "INTERNATIONAL";
 
+/** Look of the Excel and PDF; the layout is the same in every style. */
+export type SheetStyle = "classic" | "corporate" | "executive";
+
+export const SHEET_STYLES: {
+  key: SheetStyle;
+  label: string;
+  note: string;
+  header: string;
+  headerText: string;
+  band: string;
+  font: string;
+}[] = [
+  { key: "classic", label: "Classic", note: "Grey headers · Calibri / Helvetica", header: "#F2F2F2", headerText: "#000000", band: "#FFFFFF", font: "Calibri, Helvetica, Arial, sans-serif" },
+  { key: "corporate", label: "Corporate", note: "Navy headers, light-blue bands · Arial", header: "#1F4E79", headerText: "#FFFFFF", band: "#EEF4FA", font: "Arial, Helvetica, sans-serif" },
+  { key: "executive", label: "Executive", note: "Dark-green headers, soft bands · Cambria / Times", header: "#1E4D3A", headerText: "#FFFFFF", band: "#EFF5F1", font: "Cambria, 'Times New Roman', serif" },
+];
+
 export type PartyList = { companies: Company[]; total: number };
 
 export type NumberPreview = {
@@ -75,6 +92,7 @@ export type DraftInvoice = {
   item_count: number;
   summary: { model_no: string; quantity: number }[];
   source_file_name: string | null;
+  sheet_style?: SheetStyle | null;
   notes?: string | null;
   items?: {
     id?: number;
@@ -135,6 +153,7 @@ export type DataTemplateRequest = {
   buyer_name: string;
   invoice_no: string;
   invoice_date: string;
+  sheet_style: SheetStyle;
   models: TemplateModel[];
 };
 
@@ -225,6 +244,7 @@ export function saveDraft(payload: {
   buyer_gst_id?: number | null;
   invoice_date: string;
   source_file_name?: string | null;
+  sheet_style?: SheetStyle;
   rows: InvoiceRow[];
 }) {
   return apiFetch<DraftInvoice>("/invoices/draft", {
@@ -262,6 +282,7 @@ export function updateInvoice(
     buyer_gst_id?: number | null;
     invoice_date: string;
     source_file_name?: string | null;
+    sheet_style?: SheetStyle;
     rows: InvoiceRow[];
     regenerate_pdf?: boolean;
   },

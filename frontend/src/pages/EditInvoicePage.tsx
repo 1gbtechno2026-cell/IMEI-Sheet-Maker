@@ -12,6 +12,7 @@ import {
   type InvoiceRow,
   type InvoiceType,
   type ParseUploadResult,
+  type SheetStyle,
 } from "../api/invoices";
 import { useAuth } from "../auth/AuthContext";
 import { GstSelect, defaultGstId } from "./invoicing/GstSelect";
@@ -19,6 +20,7 @@ import { InvoiceHistoryPanel } from "./invoicing/InvoiceHistoryPanel";
 import { PartySelect } from "./invoicing/PartySelect";
 import { PdfPreviewPanel } from "./invoicing/PdfPreviewPanel";
 import { RowsVirtualTable } from "./invoicing/RowsVirtualTable";
+import { StylePicker } from "./invoicing/StylePicker";
 
 function canEdit(role: string, invoice: InvoiceRecord, userId: number | undefined) {
   if (invoice.is_deleted) return false;
@@ -41,6 +43,7 @@ export function EditInvoicePage() {
   const [sellerGstId, setSellerGstId] = useState<number | null>(null);
   const [buyerGstId, setBuyerGstId] = useState<number | null>(null);
   const [invoiceDate, setInvoiceDate] = useState("");
+  const [sheetStyle, setSheetStyle] = useState<SheetStyle>("classic");
   const [rows, setRows] = useState<InvoiceRow[]>([]);
   const [summary, setSummary] = useState<{ model_no: string; quantity: number }[]>([]);
   const [validCount, setValidCount] = useState(0);
@@ -95,6 +98,7 @@ export function EditInvoicePage() {
         setBuyerGstId(defaultGstId(inv.buyer_gsts, inv.buyer_gst_id ?? null));
         setInvoiceDate(inv.invoice_date);
         setFileName(inv.source_file_name);
+        setSheetStyle(inv.sheet_style || "classic");
         const initialRows: InvoiceRow[] = (inv.items || []).map((it, idx) => ({
           row_index: idx + 1,
           model_no: it.model_no,
@@ -189,6 +193,7 @@ export function EditInvoicePage() {
         seller_gst_id: sellerGstId,
         buyer_gst_id: buyerGstId,
         invoice_date: invoiceDate,
+        sheet_style: sheetStyle,
         source_file_name: fileName,
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
@@ -280,6 +285,12 @@ export function EditInvoicePage() {
             onChange={(e) => setInvoiceDate(e.target.value)}
           />
         </label>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
+        <h2 className="text-sm font-medium tracking-wide text-[var(--muted)] uppercase">Sheet style</h2>
+        <StylePicker value={sheetStyle} onChange={setSheetStyle} />
+        <p className="text-xs text-[var(--muted)]">A new style is applied when you save.</p>
       </section>
 
       <section className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">

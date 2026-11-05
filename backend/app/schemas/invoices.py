@@ -54,6 +54,7 @@ class DraftInvoiceIn(BaseModel):
     currency: str | None = None
     notes: str | None = None
     source_file_name: str | None = None
+    sheet_style: str | None = Field(default=None, pattern="^(classic|corporate|executive)$")
     rows: list[InvoiceRowIn] = Field(min_length=1)
 
 
@@ -84,6 +85,7 @@ class InvoiceOut(BaseModel):
     pdf_path: str | None = None
     source_file_name: str | None = None
     notes: str | None = None
+    sheet_style: str | None = None
     is_deleted: bool = False
     created_by: int | None = None
     item_count: int = 0
@@ -108,6 +110,7 @@ class UpdateInvoiceIn(BaseModel):
     currency: str | None = None
     notes: str | None = None
     source_file_name: str | None = None
+    sheet_style: str | None = Field(default=None, pattern="^(classic|corporate|executive)$")
     rows: list[InvoiceRowIn] = Field(min_length=1)
     regenerate_pdf: bool = True
 
@@ -126,6 +129,7 @@ class DataTemplateIn(BaseModel):
     buyer_name: str = ""
     invoice_no: str = ""
     invoice_date: str = ""
+    sheet_style: str | None = Field(default=None, pattern="^(classic|corporate|executive)$")
     models: list[TemplateModelIn] = Field(min_length=1)
 
 

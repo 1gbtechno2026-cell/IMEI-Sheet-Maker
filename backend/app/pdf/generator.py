@@ -29,6 +29,7 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+from app.sheet_styles import SheetStyle, get_style
 from app.pdf.templates import (
     MARGIN_LEFT,
     MARGIN_RIGHT,
@@ -43,7 +44,6 @@ HEADER_TOP = 8 * mm
 HEADER_GAP = 4 * mm
 MODELS_PER_ROW = 2
 HEADER_LINE = colors.HexColor("#222222")
-HEADER_FILL = colors.HexColor("#F7F7F7")
 
 
 class NumberedCanvas(canvas.Canvas):
@@ -83,11 +83,11 @@ def _fmt_date(value: Any) -> str:
     return str(value or "")
 
 
-def _header_styles() -> dict[str, ParagraphStyle]:
+def _header_styles(sheet: SheetStyle) -> dict[str, ParagraphStyle]:
     return {
         "party": ParagraphStyle(
             "SheetParty",
-            fontName="Helvetica",
+            fontName=sheet.pdf_font,
             fontSize=9,
             leading=12,
             alignment=TA_LEFT,
@@ -95,7 +95,7 @@ def _header_styles() -> dict[str, ParagraphStyle]:
         ),
         "meta": ParagraphStyle(
             "SheetMeta",
-            fontName="Helvetica",
+            fontName=sheet.pdf_font,
             fontSize=8,
             leading=11,
             alignment=TA_LEFT,
@@ -140,9 +140,10 @@ def _header_table(
     invoice_no: str,
     logo_path: str | None,
     usable: float,
+    sheet: SheetStyle,
 ) -> Table:
     """Bordered page header: logo and seller | buyer, then date | invoice no."""
-    styles = _header_styles()
+    styles = _header_styles(sheet)
     half = usable / 2
     seller_cell: Any = _party_cell("SELLER", seller, styles["party"], seller_gstin)
     logo = _logo_flowable(logo_path)
@@ -176,7 +177,7 @@ def _header_table(
         TableStyle(
             [
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("BACKGROUND", (0, 0), (-1, 0), HEADER_FILL),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(sheet.pdf_party_fill)),
                 ("BOX", (0, 0), (-1, -1), 1, HEADER_LINE),
                 ("INNERGRID", (0, 0), (-1, -1), 0.4, HEADER_LINE),
                 ("LEFTPADDING", (0, 0), (-1, -1), 6),
@@ -266,6 +267,7 @@ def _pair_table(
     *,
     include_box: bool,
     include_color: bool = False,
+    sheet: SheetStyle,
 ) -> Table:
     lists = [grouped[key] for key in models]
     height = max(len(rows) for rows in lists)
@@ -304,18 +306,21 @@ def _pair_table(
 
     table = Table(data, colWidths=widths, repeatRows=1)
     style: list[tuple] = [
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTNAME", (0, 0), (-1, 0), sheet.pdf_bold),
+        ("FONTNAME", (0, 1), (-1, -1), sheet.pdf_font),
         ("FONTSIZE", (0, 0), (-1, -1), 7),
         ("ALIGN", (0, 0), (-1, 0), "CENTER"),
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("GRID", (0, 0), (-1, -1), 0.4, colors.black),
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2F2F2")),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(sheet.pdf_grid)),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(sheet.pdf_header_fill)),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor(sheet.pdf_header_text)),
         ("LEFTPADDING", (0, 0), (-1, -1), 2),
         ("RIGHTPADDING", (0, 0), (-1, -1), 2),
         ("TOPPADDING", (0, 0), (-1, -1), 2),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
     ]
+    if sheet.pdf_band_fill:
+        style.append(("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(sheet.pdf_band_fill)]))
     for start in range(0, len(header), per_model):
         for offset, kind in enumerate(kinds):
             if kind != "model":
@@ -361,7 +366,9 @@ def _box_span(values: list[str]) -> tuple[str, int]:
     return ", ".join(parts), len(numbers) + len(others)
 
 
-def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[Any], usable: float) -> Table:
+def _summary_table(
+    seller: Any, invoice_no: str, invoice_date: str, items: list[Any], usable: float, sheet: SheetStyle
+) -> Table:
     """First page of an international sheet: units, boxes, and one row per model."""
     grouped: OrderedDict[tuple[str, str, str], list[str]] = OrderedDict()
     for item in items:
@@ -375,28 +382,26 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
 
     body_style = ParagraphStyle(
         "SummaryBody",
-        fontName="Helvetica-Oblique",
+        fontName=sheet.pdf_italic,
         fontSize=9,
         leading=12,
         alignment=TA_LEFT,
     )
     head_style = ParagraphStyle(
         "SummaryHead",
-        fontName="Helvetica-BoldOblique",
+        fontName=sheet.pdf_bold_italic,
         fontSize=8,
         leading=10,
         alignment=TA_CENTER,
     )
     title_style = ParagraphStyle(
         "SummaryTitle",
-        fontName="Helvetica-BoldOblique",
+        fontName=sheet.pdf_bold_italic,
         fontSize=13,
         leading=16,
         alignment=1,
     )
-    yellow = colors.HexColor("#FFF2CC")
-    peach = colors.HexColor("#FCE4D6")
-    orange = colors.HexColor("#F4B183")
+    title_fill, detail_fill, total_fill, head_fill = (colors.HexColor(c) for c in sheet.pdf_summary_fills)
 
     def cell(text: str, style: ParagraphStyle = body_style) -> Paragraph:
         return Paragraph(_esc(text), style)
@@ -434,9 +439,10 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
     table = Table(data, colWidths=widths)
     style: list[tuple] = [
         ("SPAN", (0, 0), (4, 0)),
-        ("BACKGROUND", (0, 0), (-1, 3), yellow),
-        ("BACKGROUND", (0, 4), (-1, 4), peach),
-        ("BACKGROUND", (0, 5), (-1, 5), orange),
+        ("BACKGROUND", (0, 0), (-1, 0), title_fill),
+        ("BACKGROUND", (0, 1), (-1, 3), detail_fill),
+        ("BACKGROUND", (0, 4), (-1, 4), total_fill),
+        ("BACKGROUND", (0, 5), (-1, 5), head_fill),
         ("SPAN", (0, 1), (2, 1)),
         ("SPAN", (3, 1), (4, 1)),
         ("SPAN", (0, 2), (2, 2)),
@@ -458,7 +464,7 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
     return table
 
 
-def _model_summary_table(items: list[Any], usable: float, *, include_box: bool, include_color: bool = False) -> Table:
+def _model_summary_table(items: list[Any], usable: float, *, include_box: bool, include_color: bool = False, sheet: SheetStyle) -> Table:
     """Local sheets: one row per model with its quantity (and boxes), plus a total."""
     grouped = _group_by_model(items)
     head = ["Model"] + (["Colour"] if include_color else []) + ["Quantity"]
@@ -484,15 +490,16 @@ def _model_summary_table(items: list[Any], usable: float, *, include_box: bool, 
     table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("FONTNAME", (0, 1), (-1, -2), "Helvetica"),
-                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), sheet.pdf_bold),
+                ("FONTNAME", (0, 1), (-1, -2), sheet.pdf_font),
+                ("FONTNAME", (0, -1), (-1, -1), sheet.pdf_bold),
                 ("FONTSIZE", (0, 0), (-1, -1), 8),
                 ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                ("GRID", (0, 0), (-1, -1), 0.4, colors.black),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2F2F2")),
-                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F2F2F2")),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor(sheet.pdf_grid)),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(sheet.pdf_header_fill)),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor(sheet.pdf_header_text)),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor(sheet.pdf_band_fill or "#F2F2F2")),
                 ("TOPPADDING", (0, 0), (-1, -1), 3),
                 ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
             ]
@@ -520,6 +527,10 @@ def generate_invoice_pdf(
 ) -> Path:
     """Render the IMEI sheet PDF to output_path and return the path."""
     styles = build_styles()
+    sheet = get_style(getattr(invoice, "sheet_style", None))
+    for key in ("section", "small", "body"):
+        bold = "Bold" in styles[key].fontName
+        styles[key].fontName = sheet.pdf_bold if bold else sheet.pdf_font
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     invoice_no = str(invoice.invoice_no or "")
@@ -538,6 +549,7 @@ def generate_invoice_pdf(
         invoice_no=invoice_no,
         logo_path=logo_path,
         usable=usable,
+        sheet=sheet,
     )
     _header_width, header_height = header.wrap(usable, 80 * mm)
 
@@ -553,7 +565,7 @@ def generate_invoice_pdf(
 
     story: list[Any] = []
     if international:
-        story.append(_summary_table(seller, invoice_no, invoice_date, items, usable))
+        story.append(_summary_table(seller, invoice_no, invoice_date, items, usable, sheet))
         story.append(PageBreak())
     grouped = _group_by_model(items)
     if getattr(invoice, "notes", None):
@@ -570,14 +582,14 @@ def generate_invoice_pdf(
     if model_names and not international:
         # International already opens with its own summary page.
         story.append(Paragraph("<b>Summary</b>", styles["section"]))
-        story.append(_model_summary_table(items, usable, include_box=include_box, include_color=include_color))
+        story.append(_model_summary_table(items, usable, include_box=include_box, include_color=include_color, sheet=sheet))
         story.append(Spacer(1, 10))
     if not model_names:
         story.append(Paragraph("No line items.", styles["body"]))
     else:
         for start in range(0, len(model_names), MODELS_PER_ROW):
             pair = model_names[start : start + MODELS_PER_ROW]
-            story.append(_pair_table(pair, grouped, usable, include_box=include_box, include_color=include_color))
+            story.append(_pair_table(pair, grouped, usable, include_box=include_box, include_color=include_color, sheet=sheet))
             if start + MODELS_PER_ROW < len(model_names):
                 story.append(Spacer(1, 8))
 
@@ -591,6 +603,7 @@ def generate_invoice_pdf(
             invoice_no=invoice_no,
             logo_path=logo_path,
             usable=usable,
+            sheet=sheet,
         )
         block.wrap(usable, 80 * mm)
         block.drawOn(pdf, MARGIN_LEFT, PAGE_HEIGHT - HEADER_TOP - header_height)
