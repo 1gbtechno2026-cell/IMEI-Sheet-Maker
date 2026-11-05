@@ -55,6 +55,7 @@ def validate_rows(
         model = str(raw.get("model_no") or "").strip()
         imei_raw = raw.get("imei")
         box = str(raw.get("box_no") or "").strip() or None
+        color = str(raw.get("color") or "").strip() or None
         country = str(raw.get("country_of_origin") or "").strip() or None
         errors: list[str] = []
 
@@ -77,6 +78,7 @@ def validate_rows(
             {
                 "row_index": raw.get("row_index", i + 1),
                 "model_no": model,
+                "color": color,
                 "imei": imei or str(imei_raw or "").strip(),
                 "box_no": box,
                 "country_of_origin": country,

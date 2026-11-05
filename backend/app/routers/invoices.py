@@ -85,9 +85,9 @@ def data_template(
     _user: User = Depends(require_permission("invoicing")),
 ) -> Response:
     """Step 3: blank IMEI data sheet with the summary filled in."""
-    names = [m.model_no.strip().upper() for m in body.models]
-    if len(set(names)) != len(names):
-        raise HTTPException(status_code=400, detail="Each model name can appear only once")
+    keys = [(m.model_no.strip().upper(), (m.color or "").strip().upper()) for m in body.models]
+    if len(set(keys)) != len(keys):
+        raise HTTPException(status_code=400, detail="Each model and colour can appear only once")
     payload = build_data_template(
         invoice_type=body.invoice_type,
         seller_name=body.seller_name,

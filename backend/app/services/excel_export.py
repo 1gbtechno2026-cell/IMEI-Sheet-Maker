@@ -3,9 +3,9 @@
 Both use one layout on one sheet, so a finished file can be uploaded again:
 
     IMEI DATA SHEET
-    Seller / Buyer / Invoice No / Invoice Date / Type
-    SUMMARY      Model | Quantity | Units per box | Number of boxes | Box No. | [Country]
-    IMEI DATA    [Box No] | model name | [Country of Origin]   (one block per model)
+    Seller / Buyer / Invoice No / Invoice Date
+    SUMMARY      Model | Colour | Quantity | Units per box | Number of boxes | Box No. | [Country]
+    IMEI DATA    Serial No | Box No | Model | Colour | IMEI | [Country of Origin]   (one block per model)
 """
 
 from __future__ import annotations
@@ -23,10 +23,12 @@ SUMMARY_MARKER = "SUMMARY"
 DATA_MARKER = "IMEI DATA"
 
 
-def _group_by_model(items: list[Any]) -> OrderedDict[str, list[Any]]:
-    grouped: OrderedDict[str, list[Any]] = OrderedDict()
+def group_items(items: list[Any]) -> OrderedDict[tuple[str, str], list[Any]]:
+    """Items per (model, colour), in sheet order."""
+    grouped: OrderedDict[tuple[str, str], list[Any]] = OrderedDict()
     for item in items:
-        grouped.setdefault(str(item.model_no or ""), []).append(item)
+        key = (str(item.model_no or ""), str(getattr(item, "color", None) or ""))
+        grouped.setdefault(key, []).append(item)
     return grouped
 
 
@@ -54,7 +56,7 @@ def _write_data_sheet(
     details: list[tuple[str, str]],
     models: list[dict[str, Any]],
 ) -> None:
-    """models: name, quantity, per_box (int | None), country, boxes, imeis (None = blank template)."""
+    """models: name, color, quantity, per_box, country, boxes, imeis (None = blank template)."""
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
     from openpyxl.worksheet.datavalidation import DataValidation
@@ -85,8 +87,7 @@ def _write_data_sheet(
             cell.font = section_font
 
     row = 1
-    title = sheet.cell(row, 1, SHEET_TITLE)
-    title.font = Font(bold=True, name="Calibri", size=14)
+    sheet.cell(row, 1, SHEET_TITLE).font = Font(bold=True, name="Calibri", size=14)
     row += 1
     for label, value in details:
         sheet.cell(row, 1, label).font = bold
@@ -95,7 +96,7 @@ def _write_data_sheet(
     row += 1
 
     # Summary
-    head = ["Model", "Quantity"]
+    head = ["Model", "Colour", "Quantity"]
     if has_box:
         head += ["Units per box", "Number of boxes", "Box No."]
     if international:
@@ -112,7 +113,7 @@ def _write_data_sheet(
     total_units = 0
     total_boxes = 0
     for model in models:
-        line: list[Any] = [model["name"], model["quantity"]]
+        line: list[Any] = [model["name"], model.get("color") or None, model["quantity"]]
         total_units += model["quantity"]
         if has_box:
             span, count = _box_span([b for b in model["boxes"] if b])
@@ -123,44 +124,51 @@ def _write_data_sheet(
         for col, value in enumerate(line, start=1):
             cell = sheet.cell(row, col, value)
             cell.border = thin
-            if col > 1:
+            if col > 2:
                 cell.alignment = center
         row += 1
-    total = ["Total", total_units] + (["", total_boxes, ""] if has_box else [])
+    total = ["Total", None, total_units] + ([None, total_boxes, None] if has_box else [])
     for col, value in enumerate(total, start=1):
         cell = sheet.cell(row, col, value)
         cell.font = bold
         cell.border = thin
-        if col > 1:
+        if col > 2:
             cell.alignment = center
     row += 2
-    widen(1, 40)
-    for col in range(2, len(head) + 1):
-        widen(col, 16)
 
-    # IMEI data: one block per model
-    blocks: list[tuple[dict[str, Any], int, list[str]]] = []
+    # IMEI data: one block per model, a blank column between blocks
+    kinds = ["serial"] + (["box"] if has_box else []) + ["model", "color", "imei"] + (["country"] if international else [])
+    titles = {
+        "serial": "Serial No",
+        "box": "Box No",
+        "model": "Model",
+        "color": "Colour",
+        "imei": "IMEI",
+        "country": "Country of Origin",
+    }
+    col_widths = {"serial": 9, "box": 8, "model": 30, "color": 12, "imei": 19, "country": 18}
+    blocks: list[tuple[dict[str, Any], int]] = []
     col = 1
     for model in models:
-        kinds = (["box"] if has_box else []) + ["imei"] + (["country"] if international else [])
-        blocks.append((model, col, kinds))
-        col += len(kinds)
-    section(row, DATA_MARKER, max(col - 1, len(head)))
+        blocks.append((model, col))
+        col += len(kinds) + 1
+    section(row, DATA_MARKER, max(col - 2, len(head)))
     row += 1
     header_row = row
 
     template = any(m.get("imeis") is None for m in models)
-    for model, start, kinds in blocks:
+    for model, start in blocks:
         for offset, kind in enumerate(kinds):
-            text = {"box": "Box No", "country": "Country of Origin"}.get(kind, model["name"])
-            cell = sheet.cell(header_row, start + offset, text)
+            cell = sheet.cell(header_row, start + offset, titles[kind])
             cell.font = bold
             cell.fill = header_fill
             cell.border = thin
             cell.alignment = center
-            widen(start + offset, {"box": 10, "country": 20}.get(kind, 30))
+            widen(start + offset, col_widths[kind])
+        widen(start + len(kinds), 3)
 
         imeis = model.get("imeis")
+        countries = model.get("countries") or []
         previous_box = None
         for index in range(model["quantity"]):
             data_row = header_row + 1 + index
@@ -168,10 +176,15 @@ def _write_data_sheet(
             new_box = box != previous_box
             previous_box = box
             for offset, kind in enumerate(kinds):
-                if kind == "box":
-                    value: Any = (int(box) if box.isdigit() else box or None) if new_box else None
+                if kind == "serial":
+                    value: Any = index + 1
+                elif kind == "box":
+                    value = (int(box) if box.isdigit() else box or None) if new_box else None
+                elif kind == "model":
+                    value = model["name"]
+                elif kind == "color":
+                    value = model.get("color") or None
                 elif kind == "country":
-                    countries = model.get("countries") or []
                     country = countries[index] if index < len(countries) else model.get("country")
                     value = (country or None) if new_box else None
                 else:
@@ -182,7 +195,7 @@ def _write_data_sheet(
                     cell.number_format = "@"
                     if imeis is None:
                         cell.fill = blank_fill
-                else:
+                elif kind in ("serial", "box", "country"):
                     cell.alignment = center
 
         if template and model["quantity"]:
@@ -199,7 +212,10 @@ def _write_data_sheet(
             check.add(f"{letter}{header_row + 1}:{letter}{header_row + model['quantity']}")
             sheet.add_data_validation(check)
 
-    sheet.row_dimensions[header_row].height = 30
+    widen(1, 30)
+    for index in range(2, len(head) + 1):
+        widen(index, 14)
+    sheet.row_dimensions[header_row].height = 22
     for index, width in widths.items():
         sheet.column_dimensions[get_column_letter(index)].width = width
 
@@ -216,13 +232,12 @@ def _save(write: Any) -> bytes:
     return bio.getvalue()
 
 
-def _details(seller: str, buyer: str, invoice_no: str, invoice_date: Any, invoice_type: str) -> list[tuple[str, str]]:
+def _details(seller: str, buyer: str, invoice_no: str, invoice_date: Any) -> list[tuple[str, str]]:
     return [
         ("Seller", seller or ""),
         ("Buyer", buyer or ""),
         ("Invoice No", invoice_no or ""),
         ("Invoice Date", _format_date(invoice_date)),
-        ("Type", "International" if invoice_type == "INTERNATIONAL" else "Local"),
     ]
 
 
@@ -235,7 +250,7 @@ def build_data_template(
     invoice_date: Any,
     models: list[dict[str, Any]],
 ) -> bytes:
-    """Blank sheet from Step 3: summary filled in, box numbers set, IMEI cells empty."""
+    """Blank sheet from Step 3: summary, serial and box numbers, model and colour filled in; IMEIs empty."""
     international = invoice_type == "INTERNATIONAL"
     blocks = []
     for model in models:
@@ -244,6 +259,7 @@ def build_data_template(
         blocks.append(
             {
                 "name": str(model["model_no"]).strip(),
+                "color": (model.get("color") or "").strip(),
                 "quantity": quantity,
                 "per_box": per_box or None,
                 "country": (model.get("country_of_origin") or "").strip() if international else "",
@@ -251,7 +267,7 @@ def build_data_template(
                 "imeis": None,
             }
         )
-    details = _details(seller_name, buyer_name, invoice_no, invoice_date, invoice_type)
+    details = _details(seller_name, buyer_name, invoice_no, invoice_date)
     return _save(
         lambda sheet: _write_data_sheet(sheet, international=international, details=details, models=blocks)
     )
@@ -259,20 +275,20 @@ def build_data_template(
 
 def build_invoice_excel(invoice: Any, items: list[Any]) -> bytes:
     """Finished sheet: same layout as the template, with the IMEIs filled in."""
-    invoice_type = str(getattr(invoice, "invoice_type", "") or "")
-    international = invoice_type == "INTERNATIONAL"
+    international = str(getattr(invoice, "invoice_type", "") or "") == "INTERNATIONAL"
     blocks = []
-    for model, rows in _group_by_model(items).items():
+    for (model, color), rows in group_items(items).items():
         boxes = [str(r.box_no or "") for r in rows]
         per_box = boxes.count(boxes[0]) if boxes and boxes[0] else None
-        countries = [r.country_of_origin for r in rows if getattr(r, "country_of_origin", None)]
+        countries = [r.country_of_origin or "" for r in rows]
         blocks.append(
             {
                 "name": model,
+                "color": color,
                 "quantity": len(rows),
                 "per_box": per_box,
-                "country": countries[0] if countries else "",
-                "countries": [r.country_of_origin or "" for r in rows],
+                "country": next((c for c in countries if c), ""),
+                "countries": countries,
                 "boxes": boxes,
                 "imeis": [str(r.imei) for r in rows],
             }
@@ -282,7 +298,6 @@ def build_invoice_excel(invoice: Any, items: list[Any]) -> bytes:
         getattr(getattr(invoice, "buyer", None), "name", "") or "",
         getattr(invoice, "invoice_no", "") or "",
         getattr(invoice, "invoice_date", None),
-        invoice_type,
     )
     return _save(
         lambda sheet: _write_data_sheet(sheet, international=international, details=details, models=blocks)

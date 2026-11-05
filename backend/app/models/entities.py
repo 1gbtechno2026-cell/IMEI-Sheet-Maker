@@ -159,6 +159,7 @@ class InvoiceItem(Base):
     imei: Mapped[str] = mapped_column(String(20), nullable=False)
     box_no: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     country_of_origin: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    color: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     rate: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)  # optional; store as text for Phase 1
 
     invoice = relationship("Invoice", back_populates="items")

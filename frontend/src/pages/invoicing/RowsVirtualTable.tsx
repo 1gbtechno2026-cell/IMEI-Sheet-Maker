@@ -14,8 +14,8 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
   const parentRef = useRef<HTMLDivElement>(null);
   const international = invoiceType === "INTERNATIONAL";
   const grid = international
-    ? "grid-cols-[3rem_1fr_1fr_4.5rem_7rem_minmax(9rem,1.1fr)_4rem]"
-    : "grid-cols-[3rem_1.2fr_1fr_minmax(9rem,1.1fr)_4rem]";
+    ? "grid-cols-[3rem_1fr_6rem_1fr_4.5rem_7rem_minmax(9rem,1.1fr)_4rem]"
+    : "grid-cols-[3rem_1.2fr_6rem_1fr_4.5rem_minmax(9rem,1.1fr)_4rem]";
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
@@ -28,8 +28,9 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
       <div className={`grid ${grid} gap-2 bg-[var(--field)] px-3 py-2 text-xs text-[var(--muted)]`}>
         <span>Serial</span>
         <span>Model No</span>
+        <span>Colour</span>
         <span>IMEI</span>
-        {international && <span>Box No</span>}
+        <span>Box No</span>
         {international && <span>Country</span>}
         <span>Status</span>
         <span />
@@ -40,7 +41,7 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
             const row = rows[vRow.index];
             const serial = rows
               .slice(0, vRow.index + 1)
-              .filter((item) => item.model_no === row.model_no).length;
+              .filter((item) => item.model_no === row.model_no && (item.color || "") === (row.color || "")).length;
             const bad = (row.errors?.length || 0) > 0;
             const fieldErr = new Set(row.error_fields || []);
             return (
@@ -63,21 +64,24 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
                   onChange={(e) => onChangeRow(vRow.index, { model_no: e.target.value })}
                 />
                 <input
+                  className="rounded border border-[var(--line)] bg-[var(--field)] px-2 py-1"
+                  value={row.color || ""}
+                  onChange={(e) => onChangeRow(vRow.index, { color: e.target.value })}
+                />
+                <input
                   className={`rounded border bg-[var(--field)] px-2 py-1 font-mono text-xs ${
                     fieldErr.has("imei") ? "border-[var(--bad)]" : "border-[var(--line)]"
                   }`}
                   value={row.imei}
                   onChange={(e) => onChangeRow(vRow.index, { imei: e.target.value })}
                 />
-                {international && (
-                  <input
-                    className={`rounded border bg-[var(--field)] px-2 py-1 ${
-                      fieldErr.has("box_no") ? "border-[var(--bad)]" : "border-[var(--line)]"
-                    }`}
-                    value={row.box_no || ""}
-                    onChange={(e) => onChangeRow(vRow.index, { box_no: e.target.value })}
-                  />
-                )}
+                <input
+                  className={`rounded border bg-[var(--field)] px-2 py-1 ${
+                    fieldErr.has("box_no") ? "border-[var(--bad)]" : "border-[var(--line)]"
+                  }`}
+                  value={row.box_no || ""}
+                  onChange={(e) => onChangeRow(vRow.index, { box_no: e.target.value })}
+                />
                 {international && (
                   <input
                     className={`rounded border bg-[var(--field)] px-2 py-1 ${

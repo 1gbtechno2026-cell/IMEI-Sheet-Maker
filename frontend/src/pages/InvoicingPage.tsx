@@ -9,10 +9,12 @@ import {
   validateRows,
   type DraftInvoice,
   type InvoiceRow,
+  type InvoiceType,
   type ParseUploadResult,
 } from "../api/invoices";
 import { useInvoiceMode } from "../auth/ModeContext";
 import { ModeToggle } from "../layout/ModeToggle";
+import { scanStorageKey, templateStorageKey } from "../lib/sheetStorage";
 import { DataTemplateBuilder } from "./invoicing/DataTemplateBuilder";
 import { GstSelect, defaultGstId } from "./invoicing/GstSelect";
 import { PartySelect } from "./invoicing/PartySelect";
@@ -24,19 +26,89 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/*
+ * What survives leaving this page:
+ *  - While a sheet is in progress, Steps 1–4 are kept (parties, number, date, Step 3 models,
+ *    the uploaded rows, scanned IMEIs), so switching sidebar tabs loses nothing.
+ *  - Once "Create Excel & PDF" succeeds, the saved work is forgotten: the result stays on
+ *    screen, and the next visit starts empty (the sheet itself is in History).
+ *  - Reset clears everything at once, for both Local and International.
+ */
+const PAGE_KEY = "imeiDataMaker.sheetPage";
+const uploadKey = (type: InvoiceType) => `imeiDataMaker.upload.${type}`;
+const MODES: InvoiceType[] = ["LOCAL", "INTERNATIONAL"];
+
+type SavedPage = {
+  sellerId: number | null;
+  seller: Company | null;
+  sellerGstId: number | null;
+  buyerId: number | null;
+  buyer: Company | null;
+  buyerGstId: number | null;
+  invoiceNo: string;
+  invoiceDate: string;
+  source: "upload" | "scan";
+};
+
+type SavedUpload = {
+  fileName: string | null;
+  rows: InvoiceRow[];
+  sheetSummary: { model_no: string; quantity: number }[] | null;
+};
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(key: string, value: unknown) {
+  try {
+    if (value == null) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // keeping work across tabs is best effort
+  }
+}
+
+/** Drop saved work. With no mode, everything for both modes and the shared page fields. */
+function forgetWork(mode?: InvoiceType) {
+  writeJson(PAGE_KEY, null);
+  for (const type of mode ? [mode] : MODES) {
+    writeJson(uploadKey(type), null);
+    writeJson(templateStorageKey(type), null);
+    if (!mode) writeJson(scanStorageKey(type), null);
+  }
+}
+
+function stripRow(r: InvoiceRow): InvoiceRow {
+  return {
+    row_index: r.row_index,
+    model_no: r.model_no,
+    color: r.color,
+    imei: r.imei,
+    box_no: r.box_no,
+    country_of_origin: r.country_of_origin,
+  };
+}
+
 export function InvoicingPage() {
   const { mode } = useInvoiceMode();
   const invoiceType = mode;
   const international = invoiceType === "INTERNATIONAL";
 
-  const [sellerId, setSellerId] = useState<number | null>(null);
-  const [seller, setSeller] = useState<Company | null>(null);
-  const [sellerGstId, setSellerGstId] = useState<number | null>(null);
-  const [buyerId, setBuyerId] = useState<number | null>(null);
-  const [buyer, setBuyer] = useState<Company | null>(null);
-  const [buyerGstId, setBuyerGstId] = useState<number | null>(null);
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(todayISO());
+  const [initial] = useState(() => readJson<SavedPage>(PAGE_KEY));
+  const [sellerId, setSellerId] = useState<number | null>(initial?.sellerId ?? null);
+  const [seller, setSeller] = useState<Company | null>(initial?.seller ?? null);
+  const [sellerGstId, setSellerGstId] = useState<number | null>(initial?.sellerGstId ?? null);
+  const [buyerId, setBuyerId] = useState<number | null>(initial?.buyerId ?? null);
+  const [buyer, setBuyer] = useState<Company | null>(initial?.buyer ?? null);
+  const [buyerGstId, setBuyerGstId] = useState<number | null>(initial?.buyerGstId ?? null);
+  const [invoiceNo, setInvoiceNo] = useState(initial?.invoiceNo ?? "");
+  const [invoiceDate, setInvoiceDate] = useState(initial?.invoiceDate || todayISO());
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseInfo, setParseInfo] = useState<ParseUploadResult | null>(null);
   const [columnMap, setColumnMap] = useState({
@@ -54,19 +126,31 @@ export function InvoicingPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState<DraftInvoice | null>(null);
-  const [source, setSource] = useState<"upload" | "scan">("upload");
+  const [source, setSource] = useState<"upload" | "scan">(initial?.source ?? "upload");
+  const [sheetSummary, setSheetSummary] = useState<SavedUpload["sheetSummary"]>(null);
+  // Bumped by Reset to remount Step 3, the scan grid and the file picker empty.
+  const [resetKey, setResetKey] = useState(0);
 
-  // Reset file-dependent state when mode changes
+  const hasWork = Boolean(
+    sellerId || buyerId || invoiceNo.trim() || rows.length > 0 || saved,
+  );
+
+  // Keep Steps 1–2 while a sheet is in progress (not after it is created).
   useEffect(() => {
-    setRows([]);
-    setParseInfo(null);
-    setPendingFile(null);
-    setFileName(null);
-    setSummary([]);
-    setCanSave(false);
-    setSaved(null);
-    setError("");
-  }, [invoiceType]);
+    if (saved?.status === "FINAL") return;
+    const page: SavedPage = {
+      sellerId,
+      seller,
+      sellerGstId,
+      buyerId,
+      buyer,
+      buyerGstId,
+      invoiceNo,
+      invoiceDate,
+      source,
+    };
+    writeJson(PAGE_KEY, page);
+  }, [sellerId, seller, sellerGstId, buyerId, buyer, buyerGstId, invoiceNo, invoiceDate, source, saved]);
 
   const runValidate = useCallback(
     async (nextRows: InvoiceRow[]) => {
@@ -84,9 +168,63 @@ export function InvoicingPage() {
       setValidCount(res.valid_count);
       setErrorCount(res.error_count);
       setCanSave(res.can_save);
+      return res;
     },
     [invoiceType],
   );
+
+  function rememberUpload(nextRows: InvoiceRow[], name: string | null, perModel: SavedUpload["sheetSummary"]) {
+    const upload: SavedUpload = { fileName: name, rows: nextRows.map(stripRow), sheetSummary: perModel };
+    writeJson(uploadKey(invoiceType), nextRows.length ? upload : null);
+  }
+
+  // Each mode keeps its own uploaded rows; show that mode's rows when switching.
+  useEffect(() => {
+    const upload = readJson<SavedUpload>(uploadKey(invoiceType));
+    setParseInfo(null);
+    setPendingFile(null);
+    setSaved(null);
+    setError("");
+    setFileName(upload?.fileName ?? null);
+    setSheetSummary(upload?.sheetSummary ?? null);
+    void runValidate(upload?.rows ?? []).catch((err) =>
+      setError(err instanceof ApiError ? err.detail : String(err)),
+    );
+  }, [invoiceType, runValidate]);
+
+  function resetAll(ask: boolean) {
+    if (ask && hasWork && !window.confirm("Clear this IMEI sheet? Parties, Step 3 models, the upload and scanned IMEIs are cleared for Local and International.")) {
+      return;
+    }
+    forgetWork();
+    setSellerId(null);
+    setSeller(null);
+    setSellerGstId(null);
+    setBuyerId(null);
+    setBuyer(null);
+    setBuyerGstId(null);
+    setInvoiceNo("");
+    setInvoiceDate(todayISO());
+    setFileName(null);
+    setParseInfo(null);
+    setPendingFile(null);
+    setSheetSummary(null);
+    setRows([]);
+    setSummary([]);
+    setValidCount(0);
+    setErrorCount(0);
+    setCanSave(false);
+    setSaved(null);
+    setError("");
+    setSource("upload");
+    setResetKey((k) => k + 1);
+    window.scrollTo({ top: 0 });
+  }
+
+  function onCreated(invoice: DraftInvoice) {
+    setSaved(invoice);
+    if (invoice.status === "FINAL") forgetWork(invoiceType);
+  }
 
   async function onFileSelected(file: File | null) {
     if (!file) return;
@@ -97,6 +235,7 @@ export function InvoicingPage() {
     try {
       const parsed = await parseUpload(file, invoiceType);
       setParseInfo(parsed);
+      setSheetSummary(parsed.sheet_summary ?? null);
       setFileName(parsed.source_file_name || file.name);
       setColumnMap({
         model_no: parsed.detected_map.model_no || "",
@@ -106,11 +245,15 @@ export function InvoicingPage() {
       });
       if (!parsed.needs_manual_map) {
         await runValidate(parsed.rows);
+        rememberUpload(parsed.rows, parsed.source_file_name || file.name, parsed.sheet_summary ?? null);
       } else {
         setRows([]);
         setCanSave(false);
       }
     } catch (err) {
+      setRows([]);
+      setSheetSummary(null);
+      rememberUpload([], null, null);
       setError(err instanceof ApiError ? err.detail : String(err));
     } finally {
       setBusy(false);
@@ -134,6 +277,7 @@ export function InvoicingPage() {
         setRows([]);
       } else {
         await runValidate(parsed.rows);
+        rememberUpload(parsed.rows, fileName, null);
       }
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : String(err));
@@ -151,7 +295,8 @@ export function InvoicingPage() {
     setBusy(true);
     setError("");
     try {
-      await runValidate(rows);
+      const res = await runValidate(rows);
+      rememberUpload(res?.rows ?? rows, fileName, sheetSummary);
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : String(err));
     } finally {
@@ -161,6 +306,7 @@ export function InvoicingPage() {
 
   function onRemoveRow(index: number) {
     const next = rows.filter((_, i) => i !== index);
+    rememberUpload(next, fileName, sheetSummary);
     void runValidate(next).catch((err) =>
       setError(err instanceof ApiError ? err.detail : String(err)),
     );
@@ -204,13 +350,14 @@ export function InvoicingPage() {
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
           model_no: r.model_no,
+          color: r.color,
           imei: r.imei,
           box_no: r.box_no,
           country_of_origin: r.country_of_origin,
         })),
       });
       setSaved(draft);
-      setSaved(await finalizeInvoice(draft.id));
+      onCreated(await finalizeInvoice(draft.id));
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err instanceof ApiError ? err.detail : String(err) };
@@ -252,13 +399,14 @@ export function InvoicingPage() {
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
           model_no: r.model_no,
+          color: r.color,
           imei: r.imei,
           box_no: r.box_no,
           country_of_origin: r.country_of_origin,
         })),
       });
       setSaved(draft);
-      setSaved(await finalizeInvoice(draft.id));
+      onCreated(await finalizeInvoice(draft.id));
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : String(err));
     } finally {
@@ -274,8 +422,7 @@ export function InvoicingPage() {
     setBusy(true);
     setError("");
     try {
-      const finalInv = await finalizeInvoice(saved.id);
-      setSaved(finalInv);
+      onCreated(await finalizeInvoice(saved.id));
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : String(err));
     } finally {
@@ -294,7 +441,18 @@ export function InvoicingPage() {
             creates the Excel and the PDF from it.
           </p>
         </div>
-        <ModeToggle />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => resetAll(true)}
+            className="btn-quiet disabled:opacity-40"
+            title="Clear everything on this page and start a new IMEI sheet"
+          >
+            Reset
+          </button>
+          <ModeToggle />
+        </div>
       </div>
 
       {error && (
@@ -368,7 +526,7 @@ export function InvoicingPage() {
       </section>
 
       <DataTemplateBuilder
-        key={invoiceType}
+        key={`${invoiceType}-${resetKey}`}
         invoiceType={invoiceType}
         sellerName={seller?.name || ""}
         buyerName={buyer?.name || ""}
@@ -404,7 +562,7 @@ export function InvoicingPage() {
         </div>
 
         {source === "scan" && (
-          <ScanSheet key={invoiceType} invoiceType={invoiceType} busy={busy} onCreate={onCreateFromScan} />
+          <ScanSheet key={`${invoiceType}-${resetKey}`} invoiceType={invoiceType} busy={busy} onCreate={onCreateFromScan} />
         )}
 
         {source === "upload" && (
@@ -419,6 +577,7 @@ export function InvoicingPage() {
               </span>
               <span className="btn-quiet">Browse</span>
               <input
+                key={`${fileName}-${resetKey}`}
                 className="sr-only"
                 type="file"
                 accept=".xlsx,.xlsm,.xls,.csv"
@@ -463,10 +622,10 @@ export function InvoicingPage() {
 
             {rows.length > 0 && (
               <>
-                {parseInfo?.sheet_summary && (
+                {sheetSummary && (
                   <p className="rounded-xl border border-[var(--ok)]/40 bg-[var(--ok)]/10 px-3 py-2 text-sm">
                     IMEI counts match the sheet’s summary:{" "}
-                    {parseInfo.sheet_summary.map((m) => `${m.model_no} ${m.quantity}`).join(" · ")}
+                    {sheetSummary.map((m) => `${m.model_no} ${m.quantity}`).join(" · ")}
                   </p>
                 )}
                 <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -550,7 +709,14 @@ export function InvoicingPage() {
       )}
 
       {saved && (saved.pdf_path || saved.status === "FINAL") && (
-        <PdfPreviewPanel invoice={saved} onUpdated={setSaved} />
+        <>
+          <PdfPreviewPanel invoice={saved} onUpdated={setSaved} />
+          <div className="flex justify-end pb-8">
+            <button type="button" onClick={() => resetAll(false)} className="btn-gold">
+              Start the next IMEI sheet
+            </button>
+          </div>
+        </>
       )}
     </div>
   );

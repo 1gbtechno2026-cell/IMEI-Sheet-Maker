@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { InvoiceRow, InvoiceType } from "../../api/invoices";
 import { imeiError, normalizeImei } from "../../lib/imei";
+import { scanStorageKey } from "../../lib/sheetStorage";
 
 type ScanModel = {
   id: string;
@@ -9,6 +10,7 @@ type ScanModel = {
   imeis: string[];
   perBox: string;
   country: string;
+  color?: string;
 };
 
 type Stage = "models" | "scan" | "done";
@@ -21,7 +23,7 @@ type Props = {
   onCreate: (rows: InvoiceRow[]) => Promise<ScanCreateResult>;
 };
 
-const storageKey = (type: InvoiceType) => `invoiceMaker.scanSheet.${type}`;
+const storageKey = scanStorageKey;
 
 function loadSaved(type: InvoiceType): { stage: Stage; models: ScanModel[] } {
   try {
@@ -199,6 +201,7 @@ export function ScanSheet({ invoiceType, busy, onCreate }: Props) {
       return m.imeis.map((imei, i) => ({
         row_index: i + 1,
         model_no: m.name,
+        color: m.color?.trim() || null,
         imei,
         box_no: String(Math.floor(i / per) + 1),
         country_of_origin: international ? m.country.trim() : null,
@@ -467,6 +470,7 @@ export function ScanSheet({ invoiceType, busy, onCreate }: Props) {
               <thead className="text-[var(--muted)]">
                 <tr>
                   <th className="py-2 pr-3 font-normal">Model</th>
+                  <th className="py-2 pr-3 font-normal">Colour</th>
                   <th className="py-2 pr-3 font-normal">Scanned</th>
                   <th className="py-2 pr-3 font-normal">Units per box</th>
                   <th className="py-2 pr-3 font-normal">Boxes</th>
@@ -481,6 +485,14 @@ export function ScanSheet({ invoiceType, busy, onCreate }: Props) {
                     return (
                       <tr key={m.id} className="border-t border-[var(--line)]">
                         <td className="py-2 pr-3 font-mono text-xs">{m.name}</td>
+                        <td className="py-2 pr-3">
+                          <input
+                            className="w-24 px-2 py-1.5"
+                            placeholder="BLACK"
+                            value={m.color || ""}
+                            onChange={(e) => updateModel(m.id, { color: e.target.value.toUpperCase() })}
+                          />
+                        </td>
                         <td className="py-2 pr-3 font-mono">{m.imeis.length}</td>
                         <td className="py-2 pr-3">
                           <input
@@ -507,6 +519,7 @@ export function ScanSheet({ invoiceType, busy, onCreate }: Props) {
                   })}
                 <tr className="border-t border-[var(--line-strong)] font-medium">
                   <td className="py-2 pr-3">Total</td>
+                  <td />
                   <td className="py-2 pr-3 font-mono">{totalScanned}</td>
                   <td />
                   <td className="py-2 pr-3 font-mono">

@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { downloadDataTemplate, type InvoiceType } from "../../api/invoices";
+import { templateStorageKey } from "../../lib/sheetStorage";
 
 type TemplateLine = {
   id: string;
   name: string;
+  color: string;
   quantity: string;
   perBox: string;
   country: string;
@@ -20,17 +22,17 @@ type Props = {
   headerWarning: string | null;
 };
 
-const storageKey = (type: InvoiceType) => `invoiceMaker.dataTemplate.${type}`;
+const storageKey = templateStorageKey;
 
 function newLine(): TemplateLine {
-  return { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: "", quantity: "", perBox: "", country: "" };
+  return { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: "", color: "", quantity: "", perBox: "", country: "" };
 }
 
 function loadSaved(type: InvoiceType): TemplateLine[] {
   try {
     const raw = localStorage.getItem(storageKey(type));
     const data = raw ? (JSON.parse(raw) as TemplateLine[]) : null;
-    if (Array.isArray(data) && data.length > 0) return data;
+    if (Array.isArray(data) && data.length > 0) return data.map((line) => ({ ...line, color: line.color ?? "" }));
   } catch {
     // ignore unreadable autosave
   }
@@ -79,7 +81,7 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
   }
 
   async function generate() {
-    const used = lines.filter((line) => line.name.trim() || line.quantity || line.perBox);
+    const used = lines.filter((line) => line.name.trim() || line.color.trim() || line.quantity || line.perBox);
     if (used.length === 0) {
       setError("Add at least one model");
       return;
@@ -87,9 +89,11 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
     const seen = new Set<string>();
     for (const line of used) {
       const name = line.name.trim().replace(/\s+/g, " ");
+      const color = line.color.trim().toUpperCase();
+      const label = `${name} ${color}`.trim();
       if (!name) return setError("Every row needs a model name");
-      if (seen.has(name.toUpperCase())) return setError(`${name} is listed twice`);
-      seen.add(name.toUpperCase());
+      if (seen.has(label.toUpperCase())) return setError(`${label} is listed twice`);
+      seen.add(label.toUpperCase());
       if (!positiveInt(line.quantity)) return setError(`Enter the quantity for ${name}`);
       if (!positiveInt(line.perBox)) return setError(`Enter the units per box for ${name}`);
       if (international && !line.country.trim()) return setError(`Enter the country of origin for ${name}`);
@@ -105,6 +109,7 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
         invoice_date: invoiceDate,
         models: used.map((line) => ({
           model_no: line.name.trim().replace(/\s+/g, " "),
+          color: line.color.trim().toUpperCase() || null,
           quantity: Number(line.quantity),
           units_per_box: Number(line.perBox),
           country_of_origin: international ? line.country.trim().toUpperCase() : null,
@@ -125,16 +130,18 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
           Step 3 — Generate the data template
         </h2>
         <p className="mt-1 max-w-2xl text-sm text-[var(--muted)]">
-          Enter each model, how many units, and how many units go in one box. The Excel you get has the summary at the
-          top and one column per model below it, with box numbers already filled in. Only the IMEIs need to be added.
+          Enter each model, its colour, how many units, and how many units go in one box. The Excel you get has the
+          summary at the top and one block per model below it, with serial numbers, box numbers, model and colour
+          already filled in. Only the IMEIs need to be added.
         </p>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[36rem] text-left text-sm">
+        <table className="w-full min-w-[44rem] text-left text-sm">
           <thead className="text-[var(--muted)]">
             <tr>
               <th className="py-2 pr-3 font-normal">Model name</th>
+              <th className="py-2 pr-3 font-normal">Colour</th>
               <th className="py-2 pr-3 font-normal">Quantity</th>
               <th className="py-2 pr-3 font-normal">Units per box</th>
               <th className="py-2 pr-3 font-normal">Boxes</th>
@@ -151,9 +158,17 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
                   <td className="py-2 pr-3">
                     <input
                       className="w-full px-3 py-1.5"
-                      placeholder="GALAXY S25 FE 8/256 BLACK"
+                      placeholder="GALAXY S25 FE 8/256"
                       value={line.name}
                       onChange={(e) => update(line.id, { name: e.target.value })}
+                    />
+                  </td>
+                  <td className="py-2 pr-3">
+                    <input
+                      className="w-28 px-2 py-1.5"
+                      placeholder="BLACK"
+                      value={line.color}
+                      onChange={(e) => update(line.id, { color: e.target.value })}
                     />
                   </td>
                   <td className="py-2 pr-3">
@@ -202,6 +217,7 @@ export function DataTemplateBuilder({ invoiceType, sellerName, buyerName, invoic
             })}
             <tr className="border-t border-[var(--line)] font-medium">
               <td className="py-2 pr-3">Total</td>
+              <td />
               <td className="py-2 pr-3 font-mono">{totals.units}</td>
               <td />
               <td className="py-2 pr-3 font-mono">{totals.boxes}</td>

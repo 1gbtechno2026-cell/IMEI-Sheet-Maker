@@ -18,6 +18,7 @@ export type NumberPreview = {
 export type InvoiceRow = {
   row_index?: number;
   model_no: string;
+  color?: string | null;
   imei: string;
   box_no?: string | null;
   country_of_origin?: string | null;
@@ -78,6 +79,7 @@ export type DraftInvoice = {
   items?: {
     id?: number;
     model_no: string;
+    color?: string | null;
     imei: string;
     box_no?: string | null;
     country_of_origin?: string | null;
@@ -121,6 +123,7 @@ export function getInvoiceMeta() {
 
 export type TemplateModel = {
   model_no: string;
+  color?: string | null;
   quantity: number;
   units_per_box: number;
   country_of_origin?: string | null;

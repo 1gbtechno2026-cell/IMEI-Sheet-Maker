@@ -37,7 +37,7 @@ export function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <p className="mb-2 text-sm tracking-[0.22em] text-[var(--accent)] uppercase">IMEI Sheet</p>
+      <p className="mb-2 text-sm tracking-[0.22em] text-[var(--accent)] uppercase">IMEI Data Maker</p>
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">Sign in</h1>
       <p className="mb-6 text-sm text-[var(--muted)]">
         First run creates admin / admin and requires a password change.

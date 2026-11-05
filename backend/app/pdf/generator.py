@@ -250,70 +250,57 @@ def _paint_sign(pdf: canvas.Canvas, seller: Any) -> None:
     )
 
 
-def _group_by_model(items: list[Any]) -> OrderedDict[str, list[Any]]:
-    grouped: OrderedDict[str, list[Any]] = OrderedDict()
+def _group_by_model(items: list[Any]) -> OrderedDict[tuple[str, str], list[Any]]:
+    """Items per (model, colour), in sheet order."""
+    grouped: OrderedDict[tuple[str, str], list[Any]] = OrderedDict()
     for item in items:
-        grouped.setdefault(item.model_no, []).append(item)
+        key = (str(item.model_no or ""), str(getattr(item, "color", None) or ""))
+        grouped.setdefault(key, []).append(item)
     return grouped
 
 
 def _pair_table(
-    models: list[str],
-    grouped: OrderedDict[str, list[Any]],
+    models: list[tuple[str, str]],
+    grouped: OrderedDict[tuple[str, str], list[Any]],
     usable: float,
     *,
     include_box: bool,
+    include_color: bool = False,
 ) -> Table:
-    lists = [grouped[name] for name in models]
+    lists = [grouped[key] for key in models]
     height = max(len(rows) for rows in lists)
-    columns = ["Serial No", "Box No", "Modal", "IMEI NO"] if include_box else ["Serial No", "Modal", "IMEI NO"]
-    per_model = len(columns)
+    kinds = ["serial"] + (["box"] if include_box else []) + ["model"] + (["color"] if include_color else []) + ["imei"]
+    titles = {"serial": "Serial No", "box": "Box No", "model": "Modal", "color": "Colour", "imei": "IMEI NO"}
+    weights = {"serial": 1.4, "box": 1.2, "model": 3.0 if include_color else 4.3, "color": 1.3, "imei": 2.5}
+    per_model = len(kinds)
     header: list[str] = []
-    for _name in models:
-        header.extend(columns)
+    for _key in models:
+        header.extend(titles[kind] for kind in kinds)
 
     data: list[list[str]] = [header]
     for index in range(height):
         row: list[str] = []
-        for name, rows in zip(models, lists):
-            if index < len(rows):
-                item = rows[index]
-                if include_box:
-                    box = str(item.box_no or "")
-                    previous = str(rows[index - 1].box_no or "") if index else ""
-                    shown_box = "" if box and box == previous else box
-                    row.extend([str(index + 1), shown_box, name, item.imei])
-                else:
-                    row.extend([str(index + 1), name, item.imei])
-            else:
+        for (name, color), rows in zip(models, lists):
+            if index >= len(rows):
                 row.extend([""] * per_model)
+                continue
+            item = rows[index]
+            box = str(item.box_no or "")
+            previous = str(rows[index - 1].box_no or "") if index else ""
+            values = {
+                "serial": str(index + 1),
+                "box": "" if box and box == previous else box,
+                "model": name,
+                "color": color,
+                "imei": item.imei,
+            }
+            row.extend(values[kind] for kind in kinds)
         data.append(row)
 
-    if include_box:
-        if len(models) == 2:
-            widths = [
-                usable * 0.07,
-                usable * 0.07,
-                usable * 0.22,
-                usable * 0.14,
-                usable * 0.07,
-                usable * 0.07,
-                usable * 0.22,
-                usable * 0.14,
-            ]
-        else:
-            widths = [usable * 0.10, usable * 0.10, usable * 0.46, usable * 0.22]
-    elif len(models) == 2:
-        widths = [
-            usable * 0.08,
-            usable * 0.27,
-            usable * 0.15,
-            usable * 0.08,
-            usable * 0.27,
-            usable * 0.15,
-        ]
-    else:
-        widths = [usable * 0.12, usable * 0.58, usable * 0.30]
+    # Two models share the width; a lone model on the last row keeps the same column widths.
+    block = usable / MODELS_PER_ROW
+    total_weight = sum(weights[kind] for kind in kinds)
+    widths = [block * weights[kind] / total_weight for kind in kinds] * len(models)
 
     table = Table(data, colWidths=widths, repeatRows=1)
     style: list[tuple] = [
@@ -330,11 +317,9 @@ def _pair_table(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
     ]
     for start in range(0, len(header), per_model):
-        style.append(("ALIGN", (start, 1), (start, -1), "CENTER"))
-        imei_col = start + per_model - 1
-        style.append(("ALIGN", (imei_col, 1), (imei_col, -1), "CENTER"))
-        if include_box:
-            style.append(("ALIGN", (start + 1, 1), (start + 1, -1), "CENTER"))
+        for offset, kind in enumerate(kinds):
+            if kind != "model":
+                style.append(("ALIGN", (start + offset, 1), (start + offset, -1), "CENTER"))
     if len(models) == 2:
         style.append(("LINEAFTER", (per_model - 1, 0), (per_model - 1, -1), 1.25, colors.black))
     table.setStyle(TableStyle(style))
@@ -378,10 +363,15 @@ def _box_span(values: list[str]) -> tuple[str, int]:
 
 def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[Any], usable: float) -> Table:
     """First page of an international sheet: units, boxes, and one row per model."""
-    grouped: OrderedDict[tuple[str, str], list[str]] = OrderedDict()
+    grouped: OrderedDict[tuple[str, str, str], list[str]] = OrderedDict()
     for item in items:
-        key = (str(item.model_no or ""), str(getattr(item, "country_of_origin", "") or ""))
+        key = (
+            str(item.model_no or ""),
+            str(getattr(item, "color", None) or ""),
+            str(getattr(item, "country_of_origin", "") or ""),
+        )
         grouped.setdefault(key, []).append(str(item.box_no or ""))
+    has_color = any(color for _model, color, _country in grouped)
 
     body_style = ParagraphStyle(
         "SummaryBody",
@@ -413,12 +403,12 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
 
     data: list[list[Any]] = [
         [Paragraph(_esc(getattr(seller, "name", "") or ""), title_style), "", "", "", ""],
-        [cell("Export Invoice No. :-"), "", "", cell(invoice_no), ""],
+        [cell("Invoice No. :-"), "", "", cell(invoice_no), ""],
         [cell("Invoice Date"), "", "", cell(invoice_date.replace("-", ".")), ""],
         [cell("Net Units"), "", "", cell(str(len(items))), ""],
         [cell("Total Number Of Boxes"), "", "", "", ""],
         [
-            Paragraph("Model Wise Boxes", head_style),
+            Paragraph("Model Wise Boxes" + (" (Colour)" if has_color else ""), head_style),
             Paragraph("Box No.", head_style),
             Paragraph("Number Of Boxes", head_style),
             Paragraph("Gross Units", head_style),
@@ -426,12 +416,12 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
         ],
     ]
     total_boxes = 0
-    for (model, country), boxes in grouped.items():
+    for (model, color, country), boxes in grouped.items():
         label, count = _box_span(boxes)
         total_boxes += count
         data.append(
             [
-                cell(model),
+                cell(f"{model} - {color}" if color else model),
                 cell(label),
                 cell(str(count)),
                 cell(str(len(boxes))),
@@ -468,14 +458,16 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
     return table
 
 
-def _model_summary_table(items: list[Any], usable: float, *, include_box: bool) -> Table:
+def _model_summary_table(items: list[Any], usable: float, *, include_box: bool, include_color: bool = False) -> Table:
     """Local sheets: one row per model with its quantity (and boxes), plus a total."""
     grouped = _group_by_model(items)
-    head = ["Model", "Quantity"] + (["Units Per Box", "Number Of Boxes", "Box No."] if include_box else [])
+    head = ["Model"] + (["Colour"] if include_color else []) + ["Quantity"]
+    if include_box:
+        head += ["Units Per Box", "Number Of Boxes", "Box No."]
     data: list[list[str]] = [head]
     total_boxes = 0
-    for model, rows in grouped.items():
-        line = [model, str(len(rows))]
+    for (model, color), rows in grouped.items():
+        line = [model] + ([color] if include_color else []) + [str(len(rows))]
         if include_box:
             boxes = [str(r.box_no or "") for r in rows]
             label, count = _box_span(boxes)
@@ -483,12 +475,11 @@ def _model_summary_table(items: list[Any], usable: float, *, include_box: bool) 
             per_box = boxes.count(boxes[0]) if boxes[0] else ""
             line += [str(per_box), str(count), label]
         data.append(line)
-    data.append(["Total", str(len(items))] + (["", str(total_boxes), ""] if include_box else []))
+    total = ["Total"] + ([""] if include_color else []) + [str(len(items))]
+    data.append(total + (["", str(total_boxes), ""] if include_box else []))
 
-    if include_box:
-        widths = [usable * 0.40, usable * 0.12, usable * 0.16, usable * 0.16, usable * 0.16]
-    else:
-        widths = [usable * 0.70, usable * 0.30]
+    weights = [4.0] + ([1.4] if include_color else []) + [1.2] + ([1.6, 1.6, 1.6] if include_box else [])
+    widths = [usable * w / sum(weights) for w in weights]
     table = Table(data, colWidths=widths, repeatRows=1)
     table.setStyle(
         TableStyle(
@@ -575,17 +566,18 @@ def generate_invoice_pdf(
     model_names = list(grouped.keys())
     # Local sheets made by scanning carry box numbers too.
     include_box = international or any(getattr(item, "box_no", None) for item in items)
+    include_color = any(getattr(item, "color", None) for item in items)
     if model_names and not international:
         # International already opens with its own summary page.
         story.append(Paragraph("<b>Summary</b>", styles["section"]))
-        story.append(_model_summary_table(items, usable, include_box=include_box))
+        story.append(_model_summary_table(items, usable, include_box=include_box, include_color=include_color))
         story.append(Spacer(1, 10))
     if not model_names:
         story.append(Paragraph("No line items.", styles["body"]))
     else:
         for start in range(0, len(model_names), MODELS_PER_ROW):
             pair = model_names[start : start + MODELS_PER_ROW]
-            story.append(_pair_table(pair, grouped, usable, include_box=include_box))
+            story.append(_pair_table(pair, grouped, usable, include_box=include_box, include_color=include_color))
             if start + MODELS_PER_ROW < len(model_names):
                 story.append(Spacer(1, 8))
 

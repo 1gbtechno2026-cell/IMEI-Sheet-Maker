@@ -98,6 +98,7 @@ export function EditInvoicePage() {
         const initialRows: InvoiceRow[] = (inv.items || []).map((it, idx) => ({
           row_index: idx + 1,
           model_no: it.model_no,
+          color: it.color,
           imei: it.imei,
           box_no: it.box_no,
           country_of_origin: it.country_of_origin,
@@ -192,6 +193,7 @@ export function EditInvoicePage() {
         rows: res.rows.map((r) => ({
           row_index: r.row_index,
           model_no: r.model_no,
+          color: r.color,
           imei: r.imei,
           box_no: r.box_no,
           country_of_origin: r.country_of_origin,

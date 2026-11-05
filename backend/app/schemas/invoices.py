@@ -30,6 +30,7 @@ class ColumnMapIn(BaseModel):
 class InvoiceRowIn(BaseModel):
     row_index: int | None = None
     model_no: str = ""
+    color: str | None = None
     imei: str = ""
     box_no: str | None = None
     country_of_origin: str | None = None
@@ -113,6 +114,7 @@ class UpdateInvoiceIn(BaseModel):
 
 class TemplateModelIn(BaseModel):
     model_no: str = Field(min_length=1, max_length=200)
+    color: str | None = Field(default=None, max_length=50)
     quantity: int = Field(ge=1, le=100000)
     units_per_box: int = Field(ge=1, le=10000)
     country_of_origin: str | None = None

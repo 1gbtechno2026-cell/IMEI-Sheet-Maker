@@ -120,6 +120,7 @@ def create_draft(
             imei=r["imei"],
             box_no=(str(r.get("box_no") or "").strip() or None),
             country_of_origin=(str(r.get("country_of_origin") or "").strip() or None),
+            color=(str(r.get("color") or "").strip() or None),
             rate=None,
         )
         for r in validation["rows"]
@@ -136,7 +137,9 @@ def create_draft(
         after={
             "invoice_no": number,
             "source_file_name": source_file_name,
-            "items": [{"model_no": r["model_no"], "imei": r["imei"]} for r in validation["rows"]],
+            "items": [
+                {"model_no": r["model_no"], "color": r.get("color"), "imei": r["imei"]} for r in validation["rows"]
+            ],
         },
     )
     db.commit()
@@ -221,6 +224,7 @@ def snapshot_invoice(invoice: Invoice) -> dict[str, Any]:
     items = [
         {
             "model_no": it.model_no,
+            "color": it.color,
             "imei": it.imei,
             "box_no": it.box_no,
             "rate": it.rate,
@@ -318,6 +322,7 @@ def update_invoice(
                 imei=r["imei"],
                 box_no=(str(r.get("box_no") or "").strip() or None),
                 country_of_origin=(str(r.get("country_of_origin") or "").strip() or None),
+                color=(str(r.get("color") or "").strip() or None),
                 rate=None,
             )
         )
@@ -490,6 +495,7 @@ def invoice_to_out(invoice: Invoice, item_count: int | None = None, summary: lis
                 "imei": it.imei,
                 "box_no": it.box_no,
                 "country_of_origin": it.country_of_origin,
+                "color": it.color,
                 "rate": it.rate,
             }
             for it in (invoice.items or [])
@@ -502,7 +508,8 @@ def invoice_to_out(invoice: Invoice, item_count: int | None = None, summary: lis
 def _model_counts(snapshot: dict[str, Any] | None) -> dict[str, int]:
     counts: dict[str, int] = defaultdict(int)
     for item in (snapshot or {}).get("items") or []:
-        counts[str(item.get("model_no") or "")] += 1
+        label = f"{item.get('model_no') or ''} {item.get('color') or ''}".strip()
+        counts[label] += 1
     return dict(counts)
 
 

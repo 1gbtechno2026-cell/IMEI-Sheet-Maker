@@ -593,88 +593,108 @@ def _try_parse_data_sheet(data: bytes, filename: str, invoice_type: str) -> dict
     if not any(text.upper() == SHEET_TITLE for text in first_col[:3]):
         return None
 
-    def find(label: str, start: int = 0) -> int | None:
-        for index in range(start, len(first_col)):
-            if first_col[index].upper() == label:
+    def find(label: str) -> int | None:
+        for index, text in enumerate(first_col):
+            if text.upper() == label:
                 return index
         return None
+
+    def role(header: str) -> str | None:
+        name = _norm_header(header)
+        if name in {"colour", "color"}:
+            return "color"
+        return _header_role(header)
 
     data_marker = find(DATA_MARKER)
     if data_marker is None or data_marker + 1 >= grid.shape[0]:
         raise SheetCountError("The IMEI DATA section is missing from this sheet.")
 
-    for index in range(data_marker):
-        if _norm_header(first_col[index]) == "type":
-            sheet_type = _cell_str(grid.iat[index, 1]).upper() if grid.shape[1] > 1 else ""
-            wanted = "INTERNATIONAL" if invoice_type == "INTERNATIONAL" else "LOCAL"
-            if sheet_type in {"LOCAL", "INTERNATIONAL"} and sheet_type != wanted:
-                raise SheetCountError(
-                    f"This sheet was made for {sheet_type.title()}. Switch to {sheet_type.title()} "
-                    f"at the top of the page, or make a new template in {wanted.title()} mode."
-                )
-            break
-
-    # Expected quantity per model, from the summary table.
-    expected: dict[str, int] = {}
+    # Expected quantity per (model, colour), from the summary table.
+    expected: dict[tuple[str, str], int] = {}
     summary_at = find(SUMMARY_MARKER)
     if summary_at is not None and summary_at < data_marker:
         head = [_norm_header(_cell_str(grid.iat[summary_at + 1, c])) for c in range(grid.shape[1])]
         if "model" in head and "quantity" in head:
             model_col, qty_col = head.index("model"), head.index("quantity")
+            color_col = next((head.index(n) for n in ("colour", "color") if n in head), None)
             for index in range(summary_at + 2, data_marker):
                 name = _cell_str(grid.iat[index, model_col])
                 if not name or name.lower() == "total":
                     break
+                color = _cell_str(grid.iat[index, color_col]) if color_col is not None else ""
                 qty = _cell_str(grid.iat[index, qty_col])
                 if qty.isdigit():
-                    expected[name] = int(qty)
+                    expected[(name, color)] = int(qty)
 
+    # Blocks: Serial No | Box No | Model | Colour | IMEI | Country. An older layout used
+    # the model name itself as the IMEI column header.
     header_row = data_marker + 1
     headers = [_cell_str(grid.iat[header_row, c]) for c in range(grid.shape[1])]
     blocks: list[dict[str, Any]] = []
-    pending_box: int | None = None
+    pending: dict[str, int] = {}
     for col, header in enumerate(headers):
-        name = _norm_header(header)
-        if not name:
-            pending_box = None
-        elif name in BOX_ALIASES:
-            pending_box = col
-        elif name in COUNTRY_ALIASES and blocks:
+        kind = role(header)
+        if not header.strip():
+            pending = {}
+        elif kind in ("serial", "box", "model", "color"):
+            pending[kind] = col
+        elif kind == "country" and blocks:
             blocks[-1]["country"] = col
-        else:
-            blocks.append({"name": header.strip(), "imei": col, "box": pending_box, "country": None})
-            pending_box = None
+        elif kind == "imei" or kind is None:
+            blocks.append(
+                {
+                    "imei": col,
+                    "name": header.strip() if kind is None else "",
+                    "box": pending.get("box"),
+                    "model": pending.get("model"),
+                    "color": pending.get("color"),
+                    "country": None,
+                }
+            )
+            pending = {}
+
+    sheet_international = any(block["country"] is not None for block in blocks)
+    if blocks and sheet_international != (invoice_type == "INTERNATIONAL"):
+        made = "International" if sheet_international else "Local"
+        wanted = "International" if invoice_type == "INTERNATIONAL" else "Local"
+        raise SheetCountError(
+            f"This sheet was made for {made}. Switch to {made} at the top of the page, "
+            f"or make a new template in {wanted} mode."
+        )
 
     rows: list[dict[str, Any]] = []
-    found: dict[str, int] = {}
+    found: dict[tuple[str, str], int] = {}
     for block in blocks:
-        box_state = ""
-        country_state = ""
+        state = {"box": "", "model": block["name"], "color": "", "country": ""}
         for index in range(header_row + 1, grid.shape[0]):
-            if block["box"] is not None:
-                box_state = _cell_str(grid.iat[index, block["box"]]) or box_state
-            if block["country"] is not None:
-                country_state = _cell_str(grid.iat[index, block["country"]]) or country_state
+            for key in ("box", "model", "color", "country"):
+                if block[key] is not None:
+                    state[key] = _cell_str(grid.iat[index, block[key]]) or state[key]
             imei = _cell_str(grid.iat[index, block["imei"]])
             if not imei:
                 continue
-            found[block["name"]] = found.get(block["name"], 0) + 1
+            key = (state["model"], state["color"])
+            found[key] = found.get(key, 0) + 1
             rows.append(
                 {
                     "row_index": index + 1,
-                    "model_no": block["name"],
+                    "model_no": state["model"],
+                    "color": state["color"] or None,
                     "imei": imei,
-                    "box_no": box_state or None,
-                    "country_of_origin": (country_state or None) if invoice_type == "INTERNATIONAL" else None,
+                    "box_no": state["box"] or None,
+                    "country_of_origin": (state["country"] or None) if sheet_international else None,
                 }
             )
 
+    def label(key: tuple[str, str]) -> str:
+        return f"{key[0]} {key[1]}".strip()
+
     problems = [
-        f"{name}: summary says {count}, sheet has {found.get(name, 0)}"
-        for name, count in expected.items()
-        if found.get(name, 0) != count
+        f"{label(key)}: summary says {count}, sheet has {found.get(key, 0)}"
+        for key, count in expected.items()
+        if found.get(key, 0) != count
     ]
-    problems += [f"{name}: not in the summary" for name in found if expected and name not in expected]
+    problems += [f"{label(key)}: not in the summary" for key in found if expected and key not in expected]
     if problems:
         raise SheetCountError("IMEI count does not match the summary. " + "; ".join(problems))
     if not rows:
@@ -689,7 +709,7 @@ def _try_parse_data_sheet(data: bytes, filename: str, invoice_type: str) -> dict
         "row_count": len(rows),
         "source_file_name": filename,
         "sheet_summary": [
-            {"model_no": name, "quantity": found.get(name, 0)} for name in (expected or found)
+            {"model_no": label(key), "quantity": found.get(key, 0)} for key in (expected or found)
         ],
     }
 
