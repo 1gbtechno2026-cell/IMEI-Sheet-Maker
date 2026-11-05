@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { hasPermission } from "../lib/permissions";
 import type { Permission } from "../lib/types";
+import { ThemeToggle } from "./ThemeToggle";
 
 type NavItem = {
   to: string;
@@ -27,9 +28,9 @@ export function Sidebar() {
   if (!user) return null;
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r border-white/10 bg-[#12141a]/95">
-      <div className="border-b border-white/10 px-5 py-6">
-        <p className="text-[11px] tracking-[0.22em] text-[var(--accent)] uppercase">IMEI Sheet</p>
+    <aside className="flex w-60 shrink-0 flex-col border-r border-[var(--line)] bg-[var(--sidebar)]">
+      <div className="border-b border-[var(--line)] px-5 py-6">
+        <p className="text-[11px] tracking-[0.22em] text-[var(--accent)] uppercase">IMEI Data Maker</p>
         <p className="mt-2 truncate text-sm font-medium">{user.name}</p>
         <p className="truncate text-xs text-[var(--muted)]">
           {user.username} · {user.role}
@@ -46,7 +47,7 @@ export function Sidebar() {
                 key="logout"
                 type="button"
                 onClick={() => void logout()}
-                className="mt-auto rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-white/5 hover:text-[var(--ink)]"
+                className="mt-auto rounded-full px-3 py-2 text-left text-sm text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]"
               >
                 Logout
               </button>
@@ -60,8 +61,8 @@ export function Sidebar() {
                 [
                   "rounded-full px-3 py-2 text-sm transition-colors",
                   isActive
-                    ? "bg-white/10 text-[var(--ink)] ring-1 ring-[var(--accent)]/60"
-                    : "text-[var(--muted)] hover:bg-white/5 hover:text-[var(--ink)]",
+                    ? "bg-[var(--chip)] text-[var(--ink)] ring-1 ring-[var(--accent)]/60"
+                    : "text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]",
                 ].join(" ")
               }
             >
@@ -70,6 +71,9 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="border-t border-[var(--line)] p-3">
+        <ThemeToggle />
+      </div>
     </aside>
   );
 }

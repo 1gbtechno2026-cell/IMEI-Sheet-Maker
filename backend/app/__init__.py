@@ -1,1 +1,1 @@
-"""Invoice Maker FastAPI backend."""
+"""IMEI Data Maker FastAPI backend."""

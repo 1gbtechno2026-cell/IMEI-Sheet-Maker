@@ -1,6 +1,16 @@
-# Invoice Maker (v0.9 — Windows + macOS)
+# IMEI Data Maker (v0.9 — Windows + macOS)
 
-Offline desktop invoicing app: **Electron** + **React / Vite / TypeScript / Tailwind** + **FastAPI** sidecar + **SQLite / SQLAlchemy 2 / Alembic**.
+Offline desktop app for IMEI data sheets: **Electron** + **React / Vite / TypeScript / Tailwind** + **FastAPI** sidecar + **SQLite / SQLAlchemy 2 / Alembic**.
+
+## How an IMEI sheet is made
+
+1. **Seller & buyer**, then **invoice number & date**.
+2. **Generate the data template**: enter each model, its quantity and units per box (plus country of origin for International). The Excel has the summary at the top and one column per model below it, with box numbers already filled in.
+3. **Fill in only the IMEIs** (yellow cells) in Excel, e.g. with a barcode gun.
+4. **Upload the filled sheet**. Each model must have exactly the quantity in its summary; IMEIs are checked (15 digits, check digit, no duplicates, not on another invoice). Or use **Create by scanning** to scan straight into the app.
+5. **Create Excel & PDF**. Both carry the per-model summary. Edits are made from History → Edit (download current data, change it, upload), and every change is listed in the invoice's edit history.
+
+Light and dark themes are switched at the bottom of the sidebar.
 
 One shared codebase for both platforms. Each platform's installer must be built **on that platform** (PyInstaller cannot cross-compile).
 
@@ -17,7 +27,7 @@ GitHub builds the installers automatically (`.github/workflows/build.yml`):
 
 | What | When | Where to download |
 |------|------|-------------------|
-| Windows `.exe` | every push to `main` | **Actions** tab → latest "Build installers" run → **Artifacts** → `InvoiceMaker-Windows` |
+| Windows `.exe` | every push to `main` | **Actions** tab → latest "Build installers" run → **Artifacts** → `IMEIDataMaker-Windows` |
 | Windows `.exe` + macOS `.dmg` | push a tag, e.g. `git tag v0.9.1 && git push origin v0.9.1` | **Releases** page |
 | Both | **Actions** → "Build installers" → **Run workflow** | Artifacts of that run |
 

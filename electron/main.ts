@@ -219,7 +219,7 @@ async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 840,
-    title: "Invoice Maker",
+    title: "IMEI Data Maker",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

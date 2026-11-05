@@ -13,6 +13,7 @@ from app.deps import CurrentUser, DbSession, require_permission
 from app.models import Company, User
 from app.rbac import role_allowed
 from app.schemas.invoices import (
+    DataTemplateIn,
     DraftInvoiceIn,
     InvoiceListOut,
     InvoiceOut,
@@ -23,6 +24,7 @@ from app.schemas.invoices import (
     ValidateRowsOut,
 )
 from app.services import excel_import, invoice_numbers, invoice_validation, invoices as invoice_service
+from app.services.excel_export import build_data_template, build_invoice_excel
 from app.services.invoice_access import can_delete_invoice, can_edit_invoice, can_view_invoice
 from app.services.settings_service import get_default_currency
 
@@ -77,22 +79,28 @@ def preview_number(
     return NumberPreviewOut(**data)
 
 
-@router.get("/upload-template")
-def upload_template(
-    invoice_type: str = Query(default="LOCAL", pattern="^(LOCAL|INTERNATIONAL)$"),
+@router.post("/data-template")
+def data_template(
+    body: DataTemplateIn,
     _user: User = Depends(require_permission("invoicing")),
 ) -> Response:
-    """Excel file with the headers the IMEI sheet upload expects."""
-    payload = excel_import.build_upload_template(invoice_type)
-    filename = (
-        "imei-sheet-template-international.xlsx"
-        if invoice_type == "INTERNATIONAL"
-        else "imei-sheet-template-local.xlsx"
+    """Step 3: blank IMEI data sheet with the summary filled in."""
+    names = [m.model_no.strip().upper() for m in body.models]
+    if len(set(names)) != len(names):
+        raise HTTPException(status_code=400, detail="Each model name can appear only once")
+    payload = build_data_template(
+        invoice_type=body.invoice_type,
+        seller_name=body.seller_name,
+        buyer_name=body.buyer_name,
+        invoice_no=body.invoice_no,
+        invoice_date=body.invoice_date,
+        models=[m.model_dump() for m in body.models],
     )
+    stem = invoice_service._safe_filename(body.invoice_no) if body.invoice_no.strip() else "imei-data"
     return Response(
         content=payload,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{stem}-template.xlsx"'},
     )
 
 
@@ -126,6 +134,8 @@ async def parse_upload(
             invoice_type,
             column_map=raw_map,
         )
+    except excel_import.SheetCountError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=400, detail=f"Failed to parse file: {exc}") from exc
 
@@ -378,3 +388,54 @@ def download_pdf(
     )
 
 
+@router.get("/{invoice_id}/excel")
+def download_excel(
+    invoice_id: int,
+    db: DbSession,
+    user: CurrentUser,
+) -> Response:
+    """Excel copy of the IMEI sheet, built from the saved line items."""
+    if not (
+        role_allowed(user.role, "invoicing")
+        or role_allowed(user.role, "history")
+        or role_allowed(user.role, "all_invoices")
+    ):
+        raise HTTPException(status_code=403, detail="Missing permission")
+    invoice = invoice_service.get_invoice(db, invoice_id)
+    if invoice is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    all_scope = role_allowed(user.role, "all_invoices")
+    if not can_view_invoice(user, invoice, all_scope=all_scope):
+        raise HTTPException(status_code=403, detail="Not allowed to view this invoice")
+    if not invoice.items:
+        raise HTTPException(status_code=400, detail="Invoice has no line items")
+    filename = f"{invoice_service._safe_filename(invoice.invoice_no)}.xlsx"
+    return Response(
+        content=build_invoice_excel(invoice, list(invoice.items)),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+
+
+@router.get("/{invoice_id}/history")
+def invoice_history(
+    invoice_id: int,
+    db: DbSession,
+    user: CurrentUser,
+) -> dict:
+    """Who created, edited and regenerated this invoice, newest first."""
+    if not (
+        role_allowed(user.role, "invoicing")
+        or role_allowed(user.role, "history")
+        or role_allowed(user.role, "all_invoices")
+    ):
+        raise HTTPException(status_code=403, detail="Missing permission")
+    invoice = invoice_service.get_invoice(db, invoice_id)
+    if invoice is None:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    all_scope = role_allowed(user.role, "all_invoices")
+    if not can_view_invoice(user, invoice, all_scope=all_scope):
+        raise HTTPException(status_code=403, detail="Not allowed to view this invoice")
+    return {"entries": invoice_service.invoice_history(db, invoice_id)}

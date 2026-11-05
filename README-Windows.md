@@ -1,6 +1,6 @@
-# Invoice Maker — Windows Setup
+# IMEI Data Maker — Windows Setup
 
-Step-by-step guide to set up, run and build Invoice Maker on Windows 10/11 (x64).
+Step-by-step guide to set up, run and build IMEI Data Maker on Windows 10/11 (x64).
 
 ← Back to [README.md](README.md) · macOS guide: [README-macOS.md](README-macOS.md)
 
@@ -95,11 +95,11 @@ Steps performed (each can also be run alone):
 |------|--------|--------|
 | 1. Bundle backend (PyInstaller) | `.\scripts\build-backend.ps1` | `backend\dist\invoice-maker-backend\invoice-maker-backend.exe` |
 | 2. Build Electron + frontend | `.\scripts\build-frontend.ps1` | `dist-electron\`, `frontend\dist\` |
-| 3. Create NSIS installer | `.\scripts\build-installer.ps1` | `release\InvoiceMaker-Setup-<version>-x64.exe` |
+| 3. Create NSIS installer | `.\scripts\build-installer.ps1` | `release\IMEIDataMaker-Setup-<version>-x64.exe` |
 
 ## 7. Install & first launch
 
-1. Run `release\InvoiceMaker-Setup-<version>-x64.exe`.
+1. Run `release\IMEIDataMaker-Setup-<version>-x64.exe`.
 2. The installer is unsigned, so SmartScreen may warn: click **More info → Run anyway**.
 3. Choose an install folder; Desktop and Start Menu shortcuts are created.
 

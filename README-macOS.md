@@ -1,6 +1,6 @@
-# Invoice Maker — macOS Setup
+# IMEI Data Maker — macOS Setup
 
-Step-by-step guide to set up, run and build Invoice Maker on a Mac (Apple Silicon or Intel).
+Step-by-step guide to set up, run and build IMEI Data Maker on a Mac (Apple Silicon or Intel).
 
 ← Back to [README.md](README.md) · Windows guide: [README-Windows.md](README-Windows.md)
 
@@ -90,8 +90,8 @@ Steps performed:
 Output:
 
 ```
-release/InvoiceMaker-<version>-mac-arm64.dmg   (Apple Silicon)
-release/InvoiceMaker-<version>-mac-x64.dmg     (Intel)
+release/IMEIDataMaker-<version>-mac-arm64.dmg   (Apple Silicon)
+release/IMEIDataMaker-<version>-mac-x64.dmg     (Intel)
 + matching .zip files
 ```
 
@@ -103,7 +103,7 @@ ELECTRON_BUILDER_ARCH=all ./scripts/build-macos.sh
 
 ## 6. Install & first launch
 
-1. Open the `.dmg` and drag **Invoice Maker** into **Applications**.
+1. Open the `.dmg` and drag **IMEI Data Maker** into **Applications**.
 2. The build is unsigned, so the first time: **right-click the app → Open → Open**.
    If macOS still blocks it: **System Settings → Privacy & Security → Open Anyway**.
 
@@ -126,5 +126,5 @@ Uninstalling (deleting the app) does **not** remove this folder. After **Setting
 | `Missing .venv` | Re-run `./scripts/setup-macos.sh` |
 | `bad interpreter: /bin/bash^M` | Script got Windows line endings — run `git checkout -- scripts/` (the repo's `.gitattributes` keeps `.sh` as LF) |
 | Port 5174 already in use | `lsof -i :5174` then `kill <PID>` |
-| "App is damaged / can't be opened" | `xattr -cr "/Applications/Invoice Maker.app"` then open again |
+| "App is damaged / can't be opened" | `xattr -cr "/Applications/IMEI Data Maker.app"` then open again |
 | Start over with a clean DB | Quit app, then `rm -rf ~/Library/Application\ Support/InvoiceMaker` (**deletes all data**) |

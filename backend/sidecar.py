@@ -23,7 +23,7 @@ def _configure_logging() -> None:
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Invoice Maker FastAPI sidecar")
+    parser = argparse.ArgumentParser(description="IMEI Data Maker FastAPI sidecar")
     parser.add_argument("--host", default="127.0.0.1", help="Bind host (default 127.0.0.1)")
     parser.add_argument("--port", type=int, required=True, help="Bind port")
     return parser.parse_args(argv)

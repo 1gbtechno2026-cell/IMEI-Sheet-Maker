@@ -1,4 +1,4 @@
-# Install Node + Python deps for Invoice Maker (Windows PowerShell)
+# Install Node + Python deps for IMEI Data Maker (Windows PowerShell)
 $ErrorActionPreference = "Stop"
 $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root

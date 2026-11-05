@@ -3,7 +3,7 @@ import { Link, Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { ApiError } from "../api/client";
 import {
-  downloadUploadTemplate,
+  downloadInvoiceExcel,
   getInvoice,
   parseUpload,
   updateInvoice,
@@ -15,6 +15,7 @@ import {
 } from "../api/invoices";
 import { useAuth } from "../auth/AuthContext";
 import { GstSelect, defaultGstId } from "./invoicing/GstSelect";
+import { InvoiceHistoryPanel } from "./invoicing/InvoiceHistoryPanel";
 import { PartySelect } from "./invoicing/PartySelect";
 import { PdfPreviewPanel } from "./invoicing/PdfPreviewPanel";
 import { RowsVirtualTable } from "./invoicing/RowsVirtualTable";
@@ -212,16 +213,16 @@ export function EditInvoicePage() {
           <p className="text-xs tracking-[0.16em] text-[var(--muted)] uppercase">Edit invoice</p>
           <h1 className="text-2xl font-semibold tracking-tight font-mono">{invoice.invoice_no}</h1>
           <p className="mt-1 text-sm text-[var(--muted)]">
-            Saving regenerates the PDF and writes an audit log.
+            Saving regenerates the PDF and Excel. Every change is listed in the edit history below.
           </p>
         </div>
         <div className="flex gap-2 text-sm">
-          <Link to="/history" className="rounded-md border border-white/10 px-3 py-1.5 hover:bg-white/5">
+          <Link to="/history" className="rounded-md border border-[var(--line)] px-3 py-1.5 hover:bg-[var(--hover)]">
             Back to History
           </Link>
           <button
             type="button"
-            className="rounded-md border border-white/10 px-3 py-1.5 hover:bg-white/5"
+            className="rounded-md border border-[var(--line)] px-3 py-1.5 hover:bg-[var(--hover)]"
             onClick={() => navigate(-1)}
           >
             Back
@@ -233,11 +234,11 @@ export function EditInvoicePage() {
         <p className="rounded-md border border-[var(--bad)]/40 bg-[var(--bad)]/10 px-3 py-2 text-sm">{error}</p>
       )}
 
-      <section className="grid gap-4 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5 md:grid-cols-2">
+      <section className="grid gap-4 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5 md:grid-cols-2">
         <label className="text-sm">
           <span className="mb-1 block text-[var(--muted)]">Seller</span>
           <input
-            className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
             value={invoice.seller_name || `Company #${invoice.seller_id}`}
             disabled
           />
@@ -263,7 +264,7 @@ export function EditInvoicePage() {
         <label className="text-sm">
           <span className="mb-1 block text-[var(--muted)]">Invoice number</span>
           <input
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 font-mono text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 font-mono text-sm"
             value={invoiceNo}
             onChange={(e) => setInvoiceNo(e.target.value)}
           />
@@ -272,31 +273,30 @@ export function EditInvoicePage() {
           <span className="mb-1 block text-[var(--muted)]">Invoice date</span>
           <input
             type="date"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
             value={invoiceDate}
             onChange={(e) => setInvoiceDate(e.target.value)}
           />
         </label>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+      <section className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
         <h2 className="text-sm font-medium tracking-wide text-[var(--muted)] uppercase">Line items</h2>
         <p className="text-xs text-[var(--muted)]">
-          {invoiceType === "INTERNATIONAL"
-            ? "International file: Box No, the model name as the column header, Country of Origin. IMEIs sit under the model name."
-            : "Local file: each column header is a model name, and the cells under it are that model’s IMEIs."}
+          To change IMEIs, download the current data, edit it in Excel (keep the summary quantities in
+          step with the IMEIs), and upload it here.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={() =>
-              void downloadUploadTemplate(invoiceType).catch((err) =>
+              void downloadInvoiceExcel(invoice.id, invoice.invoice_no).catch((err) =>
                 setError(err instanceof Error ? err.message : String(err)),
               )
             }
             className="btn-gold"
           >
-            Download template
+            Download current data
           </button>
           <input
             type="file"
@@ -313,7 +313,7 @@ export function EditInvoicePage() {
               return (
                 <select
                   key={key}
-                  className="rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+                  className="rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
                   value={columnMap[key]}
                   onChange={(e) => setColumnMap((m) => ({ ...m, [key]: e.target.value }))}
                 >
@@ -347,7 +347,7 @@ export function EditInvoicePage() {
           </span>
           <button
             type="button"
-            className="rounded-md border border-white/10 px-2 py-1 text-xs"
+            className="rounded-md border border-[var(--line)] px-2 py-1 text-xs"
             onClick={() => void runValidate(rows)}
           >
             Re-validate
@@ -359,9 +359,9 @@ export function EditInvoicePage() {
           onChangeRow={(i, patch) => setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)))}
           onRemoveRow={(i) => void runValidate(rows.filter((_, idx) => idx !== i))}
         />
-        <div className="overflow-x-auto rounded-lg border border-white/10">
+        <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
           <table className="min-w-[16rem] text-left text-sm">
-            <thead className="bg-black/30 text-[var(--muted)]">
+            <thead className="bg-[var(--field)] text-[var(--muted)]">
               <tr>
                 <th className="px-3 py-2">Model</th>
                 <th className="px-3 py-2">Qty</th>
@@ -369,7 +369,7 @@ export function EditInvoicePage() {
             </thead>
             <tbody>
               {summary.map((s) => (
-                <tr key={s.model_no} className="border-t border-white/10">
+                <tr key={s.model_no} className="border-t border-[var(--line)]">
                   <td className="px-3 py-1 font-mono text-xs">{s.model_no}</td>
                   <td className="px-3 py-1 font-mono">{s.quantity}</td>
                 </tr>
@@ -386,11 +386,13 @@ export function EditInvoicePage() {
           onClick={() => void onSave()}
           className="rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {busy ? "Saving…" : "Save + regenerate PDF"}
+          {busy ? "Saving…" : "Save + regenerate PDF & Excel"}
         </button>
       </div>
 
       {invoice.pdf_path && <PdfPreviewPanel invoice={invoice} onUpdated={setInvoice} />}
+
+      <InvoiceHistoryPanel invoiceId={invoice.id} refreshKey={invoice} />
     </div>
   );
 }

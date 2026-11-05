@@ -32,13 +32,13 @@ export function PartySelect({ role, value, excludeId, onChange, label }: Props) 
     <label className="block text-sm">
       <span className="mb-1 block text-[var(--muted)]">{label}</span>
       <input
-        className="mb-2 w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+        className="mb-2 w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
         placeholder={`Search ${role}…`}
         value={q}
         onChange={(e) => setQ(e.target.value)}
       />
       <select
-        className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+        className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
         value={value ?? ""}
         onChange={(e) => {
           const id = e.target.value ? Number(e.target.value) : null;

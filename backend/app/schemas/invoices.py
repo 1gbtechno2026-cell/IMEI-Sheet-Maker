@@ -111,6 +111,22 @@ class UpdateInvoiceIn(BaseModel):
     regenerate_pdf: bool = True
 
 
+class TemplateModelIn(BaseModel):
+    model_no: str = Field(min_length=1, max_length=200)
+    quantity: int = Field(ge=1, le=100000)
+    units_per_box: int = Field(ge=1, le=10000)
+    country_of_origin: str | None = None
+
+
+class DataTemplateIn(BaseModel):
+    invoice_type: str = Field(pattern="^(LOCAL|INTERNATIONAL)$")
+    seller_name: str = ""
+    buyer_name: str = ""
+    invoice_no: str = ""
+    invoice_date: str = ""
+    models: list[TemplateModelIn] = Field(min_length=1)
+
+
 class ParseUploadOut(BaseModel):
     headers: list[str]
     detected_map: dict[str, str | None]
@@ -119,6 +135,7 @@ class ParseUploadOut(BaseModel):
     rows: list[dict[str, Any]]
     row_count: int
     source_file_name: str | None = None
+    sheet_summary: list[dict[str, Any]] | None = None
 
 
 class ValidateRowsOut(BaseModel):

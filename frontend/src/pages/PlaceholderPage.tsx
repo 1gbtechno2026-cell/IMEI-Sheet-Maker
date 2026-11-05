@@ -46,7 +46,7 @@ export function PlaceholderPage({ title, description, accessPath, showModeToggle
         {showModeToggle && <ModeToggle />}
       </div>
 
-      <section className="rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+      <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
         <p className="text-sm text-[var(--muted)]">Placeholder — implemented in a later phase.</p>
         {showModeToggle && (
           <p className="mt-3 font-mono text-sm">

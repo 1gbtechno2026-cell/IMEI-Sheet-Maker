@@ -22,7 +22,7 @@ export function ModeToggle() {
   };
 
   return (
-    <div className="inline-flex rounded-full border border-white/10 bg-black/25 p-1">
+    <div className="inline-flex rounded-full border border-[var(--line)] bg-[var(--field)] p-1">
       {btn("LOCAL", "Local")}
       {btn("INTERNATIONAL", "International")}
     </div>

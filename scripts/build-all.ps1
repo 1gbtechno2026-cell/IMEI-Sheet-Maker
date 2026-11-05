@@ -5,7 +5,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $Root
 
 Write-Host "========================================"
-Write-Host " Invoice Maker — full Windows build"
+Write-Host " IMEI Data Maker — full Windows build"
 Write-Host "========================================"
 
 & (Join-Path $PSScriptRoot "build-backend.ps1")

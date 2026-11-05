@@ -1,4 +1,4 @@
-"""SQLAlchemy models for Invoice Maker."""
+"""SQLAlchemy models for IMEI Data Maker."""
 
 from app.models.entities import (
     AuditLog,

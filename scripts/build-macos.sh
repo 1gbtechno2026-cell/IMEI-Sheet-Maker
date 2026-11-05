@@ -14,7 +14,7 @@ fi
 
 ARCH="$(uname -m)"
 echo "========================================"
-echo " Invoice Maker — macOS build ($ARCH)"
+echo " IMEI Data Maker — macOS build ($ARCH)"
 echo "========================================"
 
 bash "$ROOT/scripts/build-backend-macos.sh"

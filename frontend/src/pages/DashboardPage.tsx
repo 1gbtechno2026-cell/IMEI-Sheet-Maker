@@ -7,7 +7,7 @@ import { useAuth } from "../auth/AuthContext";
 
 function Card({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-[var(--panel)]/80 p-4">
+    <div className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/80 p-4">
       <p className="text-xs tracking-[0.14em] text-[var(--muted)] uppercase">{label}</p>
       <p className="mt-2 text-3xl font-semibold tabular-nums">{value}</p>
       {hint && <p className="mt-1 text-xs text-[var(--muted)]">{hint}</p>}
@@ -45,7 +45,7 @@ export function DashboardPage() {
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+            <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
               <h2 className="mb-3 text-sm font-medium tracking-wide text-[var(--muted)] uppercase">
                 Local vs International
               </h2>
@@ -61,7 +61,7 @@ export function DashboardPage() {
               </div>
             </section>
 
-            <section className="rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+            <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
               <h2 className="mb-3 text-sm font-medium tracking-wide text-[var(--muted)] uppercase">
                 Top buyers
               </h2>
@@ -80,7 +80,7 @@ export function DashboardPage() {
             </section>
           </div>
 
-          <section className="rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+          <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-medium tracking-wide text-[var(--muted)] uppercase">
                 Recent invoices
@@ -103,7 +103,7 @@ export function DashboardPage() {
                 </thead>
                 <tbody>
                   {data.recent_invoices.map((inv) => (
-                    <tr key={inv.id} className="border-t border-white/10">
+                    <tr key={inv.id} className="border-t border-[var(--line)]">
                       <td className="py-2 pr-3 font-mono text-xs">{inv.invoice_no}</td>
                       <td className="py-2 pr-3">{inv.invoice_type}</td>
                       <td className="py-2 pr-3">{inv.invoice_date}</td>

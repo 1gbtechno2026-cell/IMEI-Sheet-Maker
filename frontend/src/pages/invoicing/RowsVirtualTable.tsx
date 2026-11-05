@@ -24,8 +24,8 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
   });
 
   return (
-    <div className="overflow-hidden rounded-xl border border-white/10">
-      <div className={`grid ${grid} gap-2 bg-black/30 px-3 py-2 text-xs text-[var(--muted)]`}>
+    <div className="overflow-hidden rounded-xl border border-[var(--line)]">
+      <div className={`grid ${grid} gap-2 bg-[var(--field)] px-3 py-2 text-xs text-[var(--muted)]`}>
         <span>Serial</span>
         <span>Model No</span>
         <span>IMEI</span>
@@ -46,7 +46,7 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
             return (
               <div
                 key={vRow.key}
-                className={`absolute left-0 grid w-full ${grid} gap-2 border-t border-white/5 px-3 py-1 text-sm ${
+                className={`absolute left-0 grid w-full ${grid} gap-2 border-t border-[var(--line-soft)] px-3 py-1 text-sm ${
                   bad ? "bg-[var(--bad)]/10" : ""
                 }`}
                 style={{ height: vRow.size, transform: `translateY(${vRow.start}px)` }}
@@ -56,23 +56,23 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
                   {serial}
                 </span>
                 <input
-                  className={`rounded border bg-black/30 px-2 py-1 ${
-                    fieldErr.has("model_no") ? "border-[var(--bad)]" : "border-white/10"
+                  className={`rounded border bg-[var(--field)] px-2 py-1 ${
+                    fieldErr.has("model_no") ? "border-[var(--bad)]" : "border-[var(--line)]"
                   }`}
                   value={row.model_no}
                   onChange={(e) => onChangeRow(vRow.index, { model_no: e.target.value })}
                 />
                 <input
-                  className={`rounded border bg-black/30 px-2 py-1 font-mono text-xs ${
-                    fieldErr.has("imei") ? "border-[var(--bad)]" : "border-white/10"
+                  className={`rounded border bg-[var(--field)] px-2 py-1 font-mono text-xs ${
+                    fieldErr.has("imei") ? "border-[var(--bad)]" : "border-[var(--line)]"
                   }`}
                   value={row.imei}
                   onChange={(e) => onChangeRow(vRow.index, { imei: e.target.value })}
                 />
                 {international && (
                   <input
-                    className={`rounded border bg-black/30 px-2 py-1 ${
-                      fieldErr.has("box_no") ? "border-[var(--bad)]" : "border-white/10"
+                    className={`rounded border bg-[var(--field)] px-2 py-1 ${
+                      fieldErr.has("box_no") ? "border-[var(--bad)]" : "border-[var(--line)]"
                     }`}
                     value={row.box_no || ""}
                     onChange={(e) => onChangeRow(vRow.index, { box_no: e.target.value })}
@@ -80,8 +80,8 @@ export function RowsVirtualTable({ rows, invoiceType, onChangeRow, onRemoveRow }
                 )}
                 {international && (
                   <input
-                    className={`rounded border bg-black/30 px-2 py-1 ${
-                      fieldErr.has("country_of_origin") ? "border-[var(--bad)]" : "border-white/10"
+                    className={`rounded border bg-[var(--field)] px-2 py-1 ${
+                      fieldErr.has("country_of_origin") ? "border-[var(--bad)]" : "border-[var(--line)]"
                     }`}
                     value={row.country_of_origin || ""}
                     onChange={(e) => onChangeRow(vRow.index, { country_of_origin: e.target.value })}

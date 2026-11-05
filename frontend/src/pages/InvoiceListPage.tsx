@@ -139,11 +139,11 @@ export function InvoiceListPage({ scope }: Props) {
         <ModeToggle />
       </div>
 
-      <div className="grid gap-3 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-4 md:grid-cols-3 lg:grid-cols-6">
         <label className="text-xs">
           <span className="mb-1 block text-[var(--muted)]">Seller</span>
           <select
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
             value={sellerId}
             onChange={(e) => setSellerId(e.target.value ? Number(e.target.value) : "")}
           >
@@ -158,7 +158,7 @@ export function InvoiceListPage({ scope }: Props) {
         <label className="text-xs">
           <span className="mb-1 block text-[var(--muted)]">Buyer</span>
           <select
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
             value={buyerId}
             onChange={(e) => setBuyerId(e.target.value ? Number(e.target.value) : "")}
           >
@@ -174,7 +174,7 @@ export function InvoiceListPage({ scope }: Props) {
           <span className="mb-1 block text-[var(--muted)]">From</span>
           <input
             type="date"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
           />
@@ -183,7 +183,7 @@ export function InvoiceListPage({ scope }: Props) {
           <span className="mb-1 block text-[var(--muted)]">To</span>
           <input
             type="date"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />
@@ -191,7 +191,7 @@ export function InvoiceListPage({ scope }: Props) {
         <label className="text-xs">
           <span className="mb-1 block text-[var(--muted)]">Invoice no</span>
           <input
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 text-sm"
             value={invoiceNo}
             onChange={(e) => setInvoiceNo(e.target.value)}
             placeholder="ACME/LOC/…"
@@ -200,7 +200,7 @@ export function InvoiceListPage({ scope }: Props) {
         <label className="text-xs">
           <span className="mb-1 block text-[var(--muted)]">IMEI</span>
           <input
-            className="w-full rounded-md border border-white/10 bg-black/30 px-2 py-2 font-mono text-sm"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-2 py-2 font-mono text-sm"
             value={imei}
             onChange={(e) => setImei(e.target.value)}
             placeholder="15 digits"
@@ -210,9 +210,9 @@ export function InvoiceListPage({ scope }: Props) {
 
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10">
+      <div className="overflow-x-auto rounded-xl border border-[var(--line)]">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-black/30 text-[var(--muted)]">
+          <thead className="bg-[var(--field)] text-[var(--muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">Invoice</th>
               <th className="px-3 py-2 font-medium">Date</th>
@@ -235,7 +235,7 @@ export function InvoiceListPage({ scope }: Props) {
                 const editable = canEdit(user?.role || "", inv, user?.id);
                 const isAdmin = user?.role === "ADMIN";
                 return (
-                  <tr key={inv.id} className="border-t border-white/10">
+                  <tr key={inv.id} className="border-t border-[var(--line)]">
                     <td className="px-3 py-2 font-mono text-xs">{inv.invoice_no}</td>
                     <td className="px-3 py-2">{inv.invoice_date}</td>
                     <td className="px-3 py-2">{inv.seller_name || inv.seller_id}</td>
@@ -296,7 +296,7 @@ export function InvoiceListPage({ scope }: Props) {
       </div>
 
       {preview && (
-        <section className="rounded-xl border border-white/10 bg-[var(--panel)]/70 p-4">
+        <section className="rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-4">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-medium">PDF preview</h2>
             <button
@@ -310,7 +310,7 @@ export function InvoiceListPage({ scope }: Props) {
               Close
             </button>
           </div>
-          <iframe title="PDF" src={preview.url} className="h-[65vh] w-full rounded-md border border-white/10 bg-white" />
+          <iframe title="PDF" src={preview.url} className="h-[65vh] w-full rounded-md border border-[var(--line)] bg-white" />
         </section>
       )}
     </div>

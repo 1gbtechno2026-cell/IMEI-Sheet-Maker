@@ -128,9 +128,9 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 md:p-8">
-      <div className="w-full max-w-2xl rounded-xl border border-white/10 bg-[var(--panel)] shadow-xl">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[var(--overlay)] p-4 md:p-8">
+      <div className="w-full max-w-2xl rounded-xl border border-[var(--line)] bg-[var(--panel)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[var(--line)] px-5 py-4">
           <h2 className="text-lg font-semibold">{initial ? "Edit company" : "Add company"}</h2>
           <button type="button" onClick={onClose} className="text-[var(--muted)] hover:text-[var(--ink)]">
             Close
@@ -142,7 +142,7 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
             <span className="mb-1 block text-[var(--muted)]">Company name *</span>
             <input
               required
-              className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2"
+              className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
               value={values.name}
               onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
             />
@@ -161,25 +161,25 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
             </div>
             <div className="space-y-2">
               {values.gsts.map((row, index) => (
-                <div key={index} className="grid gap-2 rounded-lg border border-white/10 p-3 md:grid-cols-[1fr_1fr_1.2fr_auto]">
+                <div key={index} className="grid gap-2 rounded-lg border border-[var(--line)] p-3 md:grid-cols-[1fr_1fr_1.2fr_auto]">
                   <input
                     required
                     placeholder="Label"
-                    className="rounded-md border border-white/10 bg-black/30 px-3 py-2"
+                    className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
                     value={row.label}
                     onChange={(e) => setGst(index, { label: e.target.value })}
                   />
                   <input
                     required
                     placeholder="State"
-                    className="rounded-md border border-white/10 bg-black/30 px-3 py-2"
+                    className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
                     value={row.state}
                     onChange={(e) => setGst(index, { state: e.target.value })}
                   />
                   <input
                     required
                     placeholder="GSTIN"
-                    className="rounded-md border border-white/10 bg-black/30 px-3 py-2 font-mono"
+                    className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 font-mono"
                     value={row.gstin}
                     onChange={(e) => setGst(index, { gstin: e.target.value })}
                   />
@@ -225,7 +225,7 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
             </span>
             <input type="file" accept="image/png,image/jpeg" onChange={(e) => onLogo(e.target.files?.[0] || null)} />
             {logoPreview && (
-              <div className="mt-2 inline-block rounded-md border border-white/10 bg-white p-2">
+              <div className="mt-2 inline-block rounded-md border border-[var(--line)] bg-white p-2">
                 <img src={logoPreview} alt="Logo preview" className="max-h-16 object-contain" />
               </div>
             )}
@@ -241,7 +241,7 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
               onChange={(e) => onSignStamp(e.target.files?.[0] || null)}
             />
             {stampPreview && (
-              <div className="mt-2 inline-block rounded-md border border-white/10 bg-white p-2">
+              <div className="mt-2 inline-block rounded-md border border-[var(--line)] bg-white p-2">
                 <img src={stampPreview} alt="Sign and stamp preview" className="max-h-28 object-contain" />
               </div>
             )}
@@ -267,7 +267,7 @@ export function CompanyModal({ open, initial, busy, error, onClose, onSubmit }: 
 
           {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
 
-          <div className="flex justify-end gap-2 border-t border-white/10 pt-4">
+          <div className="flex justify-end gap-2 border-t border-[var(--line)] pt-4">
             <button
               type="button"
               onClick={onClose}

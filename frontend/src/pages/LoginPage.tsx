@@ -53,7 +53,7 @@ export function LoginPage() {
         <label className="block text-sm">
           <span className="mb-1 block text-[var(--muted)]">Username</span>
           <input
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
@@ -64,7 +64,7 @@ export function LoginPage() {
           <span className="mb-1 block text-[var(--muted)]">Password</span>
           <input
             type="password"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"

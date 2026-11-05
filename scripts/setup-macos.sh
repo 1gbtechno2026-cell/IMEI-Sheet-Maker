@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-echo "==> Invoice Maker macOS setup"
+echo "==> IMEI Data Maker macOS setup"
 echo "    App data → ~/Library/Application Support/InvoiceMaker/"
 
 if ! command -v node >/dev/null 2>&1; then

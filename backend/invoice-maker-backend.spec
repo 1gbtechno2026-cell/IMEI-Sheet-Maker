@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# PyInstaller spec for Invoice Maker FastAPI sidecar.
+# PyInstaller spec for IMEI Data Maker FastAPI sidecar.
 # Build on Windows with Python 3.11:
 #   .\.venv\Scripts\python.exe -m PyInstaller --noconfirm invoice-maker-backend.spec
 #

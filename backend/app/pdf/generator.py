@@ -468,6 +468,48 @@ def _summary_table(seller: Any, invoice_no: str, invoice_date: str, items: list[
     return table
 
 
+def _model_summary_table(items: list[Any], usable: float, *, include_box: bool) -> Table:
+    """Local sheets: one row per model with its quantity (and boxes), plus a total."""
+    grouped = _group_by_model(items)
+    head = ["Model", "Quantity"] + (["Units Per Box", "Number Of Boxes", "Box No."] if include_box else [])
+    data: list[list[str]] = [head]
+    total_boxes = 0
+    for model, rows in grouped.items():
+        line = [model, str(len(rows))]
+        if include_box:
+            boxes = [str(r.box_no or "") for r in rows]
+            label, count = _box_span(boxes)
+            total_boxes += count
+            per_box = boxes.count(boxes[0]) if boxes[0] else ""
+            line += [str(per_box), str(count), label]
+        data.append(line)
+    data.append(["Total", str(len(items))] + (["", str(total_boxes), ""] if include_box else []))
+
+    if include_box:
+        widths = [usable * 0.40, usable * 0.12, usable * 0.16, usable * 0.16, usable * 0.16]
+    else:
+        widths = [usable * 0.70, usable * 0.30]
+    table = Table(data, colWidths=widths, repeatRows=1)
+    table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 1), (-1, -2), "Helvetica"),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 8),
+                ("ALIGN", (1, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("GRID", (0, 0), (-1, -1), 0.4, colors.black),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#F2F2F2")),
+                ("BACKGROUND", (0, -1), (-1, -1), colors.HexColor("#F2F2F2")),
+                ("TOPPADDING", (0, 0), (-1, -1), 3),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]
+        )
+    )
+    return table
+
+
 def _gstin_for(invoice: Any, company: Any, attr: str) -> str:
     chosen = getattr(invoice, attr, None)
     gstin = str(getattr(chosen, "gstin", "") or "").strip()
@@ -531,12 +573,19 @@ def generate_invoice_pdf(
         story.append(Spacer(1, 4))
 
     model_names = list(grouped.keys())
+    # Local sheets made by scanning carry box numbers too.
+    include_box = international or any(getattr(item, "box_no", None) for item in items)
+    if model_names and not international:
+        # International already opens with its own summary page.
+        story.append(Paragraph("<b>Summary</b>", styles["section"]))
+        story.append(_model_summary_table(items, usable, include_box=include_box))
+        story.append(Spacer(1, 10))
     if not model_names:
         story.append(Paragraph("No line items.", styles["body"]))
     else:
         for start in range(0, len(model_names), MODELS_PER_ROW):
             pair = model_names[start : start + MODELS_PER_ROW]
-            story.append(_pair_table(pair, grouped, usable, include_box=international))
+            story.append(_pair_table(pair, grouped, usable, include_box=include_box))
             if start + MODELS_PER_ROW < len(model_names):
                 story.append(Spacer(1, 8))
 

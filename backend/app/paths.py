@@ -1,4 +1,4 @@
-"""App data directory helpers for Invoice Maker.
+"""App data directory helpers for IMEI Data Maker.
 
 Windows: %APPDATA%/InvoiceMaker/
 macOS:   ~/Library/Application Support/InvoiceMaker

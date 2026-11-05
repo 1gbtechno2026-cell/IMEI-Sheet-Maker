@@ -39,6 +39,8 @@ export type ParseUploadResult = {
   rows: InvoiceRow[];
   row_count: number;
   source_file_name?: string;
+  /** Present for the Step 3 data sheet: IMEIs found per model (already matched to the summary). */
+  sheet_summary?: { model_no: string; quantity: number }[] | null;
 };
 
 export type ValidateResult = {
@@ -117,26 +119,71 @@ export function getInvoiceMeta() {
   return apiFetch<{ default_currency: string }>("/invoices/meta");
 }
 
-export async function downloadUploadTemplate(invoiceType: InvoiceType = "LOCAL"): Promise<void> {
-  const token = getStoredToken();
-  const res = await fetch(`${getApiBaseUrl()}/invoices/upload-template?invoice_type=${invoiceType}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (!res.ok) {
-    throw new Error(`Template download failed (${res.status})`);
-  }
-  const blob = await res.blob();
+export type TemplateModel = {
+  model_no: string;
+  quantity: number;
+  units_per_box: number;
+  country_of_origin?: string | null;
+};
+
+export type DataTemplateRequest = {
+  invoice_type: InvoiceType;
+  seller_name: string;
+  buyer_name: string;
+  invoice_no: string;
+  invoice_date: string;
+  models: TemplateModel[];
+};
+
+function saveBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download =
-    invoiceType === "INTERNATIONAL"
-      ? "imei-sheet-template-international.xlsx"
-      : "imei-sheet-template-local.xlsx";
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+async function errorDetail(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === "string") return body.detail;
+  } catch {
+    // not JSON
+  }
+  return `${fallback} (${res.status})`;
+}
+
+/** Step 3: blank IMEI data sheet with the summary filled in. */
+export async function downloadDataTemplate(body: DataTemplateRequest): Promise<void> {
+  const token = getStoredToken();
+  const res = await fetch(`${getApiBaseUrl()}/invoices/data-template`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(await errorDetail(res, "Template download failed"));
+  }
+  const stem = body.invoice_no.trim().replace(/[^\w.-]+/g, "_") || "imei-data";
+  saveBlob(await res.blob(), `${stem}-template.xlsx`);
+}
+
+export type HistoryEntry = {
+  id: number;
+  action: "create" | "update" | "files" | "soft_delete" | string;
+  user: string;
+  at: string | null;
+  changes: string[];
+};
+
+export function getInvoiceHistory(id: number) {
+  return apiFetch<{ entries: HistoryEntry[] }>(`/invoices/${id}/history`);
 }
 
 export function parseUpload(
@@ -262,3 +309,15 @@ export async function fetchInvoicePdfObjectUrl(id: number): Promise<string> {
   return URL.createObjectURL(blob);
 }
 
+
+/** Download the Excel copy of an invoice's IMEI sheet. */
+export async function downloadInvoiceExcel(id: number, invoiceNo: string): Promise<void> {
+  const token = getStoredToken();
+  const res = await fetch(`${getApiBaseUrl()}/invoices/${id}/excel`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    throw new Error(`Excel download failed (${res.status})`);
+  }
+  saveBlob(await res.blob(), `${invoiceNo.replace(/[^\w.-]+/g, "_")}.xlsx`);
+}

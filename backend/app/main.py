@@ -1,4 +1,4 @@
-"""FastAPI entrypoint for Invoice Maker sidecar."""
+"""FastAPI entrypoint for IMEI Data Maker sidecar."""
 
 from __future__ import annotations
 
@@ -36,9 +36,9 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(
-    title="Invoice Maker API",
+    title="IMEI Data Maker API",
     version="0.9.0",
-    description="Local sidecar API for Invoice Maker (offline desktop app).",
+    description="Local sidecar API for IMEI Data Maker (offline desktop app).",
     lifespan=lifespan,
 )
 
@@ -64,7 +64,7 @@ app.include_router(settings.router)
 @app.get("/")
 def root() -> dict:
     return {
-        "name": "Invoice Maker API",
+        "name": "IMEI Data Maker API",
         "version": "0.9.0",
         "app_data_dir": str(get_app_data_dir()),
         "db_path": str(get_db_path()),

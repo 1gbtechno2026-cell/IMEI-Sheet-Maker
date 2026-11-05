@@ -123,18 +123,18 @@ export function UsersPage() {
 
       <form
         onSubmit={onCreate}
-        className="mb-8 grid max-w-xl gap-3 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5"
+        className="mb-8 grid max-w-xl gap-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5"
       >
         <h2 className="text-sm font-medium">Create user</h2>
         <input
-          className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
         />
         <input
-          className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -142,7 +142,7 @@ export function UsersPage() {
         />
         <input
           type="password"
-          className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
           placeholder="Password (min 8)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -150,7 +150,7 @@ export function UsersPage() {
           required
         />
         <select
-          className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
           value={role}
           onChange={(e) => setRole(e.target.value as Role)}
         >
@@ -179,13 +179,13 @@ export function UsersPage() {
         >
           <h2 className="text-sm font-medium">Edit user #{edit.id}</h2>
           <input
-            className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+            className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
             value={edit.name}
             onChange={(e) => setEdit({ ...edit, name: e.target.value })}
             required
           />
           <select
-            className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+            className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
             value={edit.role}
             onChange={(e) => setEdit({ ...edit, role: e.target.value as Role })}
           >
@@ -206,7 +206,7 @@ export function UsersPage() {
             <button
               type="button"
               onClick={() => setEdit(null)}
-              className="rounded-md border border-white/15 px-3 py-2 text-sm"
+              className="rounded-md border border-[var(--line-strong)] px-3 py-2 text-sm"
             >
               Cancel
             </button>
@@ -222,7 +222,7 @@ export function UsersPage() {
           <h2 className="text-sm font-medium">Reset password — {resetFor.username}</h2>
           <input
             type="password"
-            className="rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+            className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
             placeholder="New password (min 8)"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
@@ -244,7 +244,7 @@ export function UsersPage() {
                 setResetFor(null);
                 setNewPassword("");
               }}
-              className="rounded-md border border-white/15 px-3 py-2 text-sm"
+              className="rounded-md border border-[var(--line-strong)] px-3 py-2 text-sm"
             >
               Cancel
             </button>
@@ -252,9 +252,9 @@ export function UsersPage() {
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10">
+      <div className="overflow-x-auto rounded-xl border border-[var(--line)]">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-black/30 text-[var(--muted)]">
+          <thead className="bg-[var(--field)] text-[var(--muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">ID</th>
               <th className="px-3 py-2 font-medium">Name</th>
@@ -266,7 +266,7 @@ export function UsersPage() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-t border-white/10">
+              <tr key={u.id} className="border-t border-[var(--line)]">
                 <td className="px-3 py-2 font-mono">{u.id}</td>
                 <td className="px-3 py-2">{u.name}</td>
                 <td className="px-3 py-2 font-mono">{u.username}</td>
@@ -280,7 +280,7 @@ export function UsersPage() {
                       onClick={() =>
                         setEdit({ id: u.id, name: u.name, role: u.role as Role })
                       }
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+                      className="rounded border border-[var(--line-strong)] px-2 py-1 text-xs hover:bg-[var(--hover)]"
                     >
                       Edit
                     </button>
@@ -288,7 +288,7 @@ export function UsersPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => setResetFor(u)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5"
+                      className="rounded border border-[var(--line-strong)] px-2 py-1 text-xs hover:bg-[var(--hover)]"
                     >
                       Reset pw
                     </button>
@@ -296,7 +296,7 @@ export function UsersPage() {
                       type="button"
                       disabled={busy || u.id === me?.id}
                       onClick={() => void onToggleActive(u)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5 disabled:opacity-40"
+                      className="rounded border border-[var(--line-strong)] px-2 py-1 text-xs hover:bg-[var(--hover)] disabled:opacity-40"
                       title={u.id === me?.id ? "Cannot deactivate yourself" : undefined}
                     >
                       {u.is_active ? "Deactivate" : "Activate"}

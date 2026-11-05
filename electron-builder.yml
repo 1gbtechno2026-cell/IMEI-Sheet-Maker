@@ -11,8 +11,8 @@
 #   macOS:   ~/Library/Application Support/InvoiceMaker/
 
 appId: com.invoicemaker.app
-productName: Invoice Maker
-copyright: Copyright © Invoice Maker
+productName: IMEI Data Maker
+copyright: Copyright © IMEI Data Maker
 
 directories:
   output: release
@@ -44,7 +44,7 @@ win:
     - target: nsis
       arch:
         - x64
-  artifactName: InvoiceMaker-Setup-${version}-${arch}.${ext}
+  artifactName: IMEIDataMaker-Setup-${version}-${arch}.${ext}
 
 nsis:
   oneClick: false
@@ -52,7 +52,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Invoice Maker
+  shortcutName: IMEI Data Maker
   # Critical: do not delete %APPDATA%\InvoiceMaker (backups, db, signatures)
   deleteAppDataOnUninstall: false
 
@@ -69,7 +69,7 @@ mac:
       arch:
         - arm64
         - x64
-  artifactName: InvoiceMaker-${version}-mac-${arch}.${ext}
+  artifactName: IMEIDataMaker-${version}-mac-${arch}.${ext}
   # Optional later: hardenedRuntime + notarize for Gatekeeper distribution
   # hardenedRuntime: true
   # gatekeeperAssess: false
@@ -77,7 +77,7 @@ mac:
   # entitlementsInherit: build/entitlements.mac.plist
 
 dmg:
-  artifactName: InvoiceMaker-${version}-mac-${arch}.${ext}
+  artifactName: IMEIDataMaker-${version}-mac-${arch}.${ext}
 
 asar: true
 asarUnpack: []

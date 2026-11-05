@@ -1,4 +1,4 @@
-"""Alembic environment — uses Invoice Maker app data SQLite path."""
+"""Alembic environment — uses IMEI Data Maker app data SQLite path."""
 
 from __future__ import annotations
 

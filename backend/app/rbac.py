@@ -1,4 +1,4 @@
-"""Role constants and permission maps for Invoice Maker."""
+"""Role constants and permission maps for IMEI Data Maker."""
 
 from __future__ import annotations
 

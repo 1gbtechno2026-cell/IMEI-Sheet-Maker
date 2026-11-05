@@ -578,6 +578,122 @@ def _try_parse_column_groups(data: bytes, filename: str, invoice_type: str) -> d
     }
 
 
+class SheetCountError(ValueError):
+    """An IMEI data sheet whose IMEIs do not match its own summary."""
+
+
+def _try_parse_data_sheet(data: bytes, filename: str, invoice_type: str) -> dict[str, Any] | None:
+    """The one-sheet layout from Step 3: title, summary, then the IMEI data blocks."""
+    from app.services.excel_export import DATA_MARKER, SHEET_TITLE, SUMMARY_MARKER
+
+    grid = _read_grid(data, filename)
+    if grid.empty or grid.shape[1] == 0:
+        return None
+    first_col = [_cell_str(grid.iat[r, 0]) for r in range(grid.shape[0])]
+    if not any(text.upper() == SHEET_TITLE for text in first_col[:3]):
+        return None
+
+    def find(label: str, start: int = 0) -> int | None:
+        for index in range(start, len(first_col)):
+            if first_col[index].upper() == label:
+                return index
+        return None
+
+    data_marker = find(DATA_MARKER)
+    if data_marker is None or data_marker + 1 >= grid.shape[0]:
+        raise SheetCountError("The IMEI DATA section is missing from this sheet.")
+
+    for index in range(data_marker):
+        if _norm_header(first_col[index]) == "type":
+            sheet_type = _cell_str(grid.iat[index, 1]).upper() if grid.shape[1] > 1 else ""
+            wanted = "INTERNATIONAL" if invoice_type == "INTERNATIONAL" else "LOCAL"
+            if sheet_type in {"LOCAL", "INTERNATIONAL"} and sheet_type != wanted:
+                raise SheetCountError(
+                    f"This sheet was made for {sheet_type.title()}. Switch to {sheet_type.title()} "
+                    f"at the top of the page, or make a new template in {wanted.title()} mode."
+                )
+            break
+
+    # Expected quantity per model, from the summary table.
+    expected: dict[str, int] = {}
+    summary_at = find(SUMMARY_MARKER)
+    if summary_at is not None and summary_at < data_marker:
+        head = [_norm_header(_cell_str(grid.iat[summary_at + 1, c])) for c in range(grid.shape[1])]
+        if "model" in head and "quantity" in head:
+            model_col, qty_col = head.index("model"), head.index("quantity")
+            for index in range(summary_at + 2, data_marker):
+                name = _cell_str(grid.iat[index, model_col])
+                if not name or name.lower() == "total":
+                    break
+                qty = _cell_str(grid.iat[index, qty_col])
+                if qty.isdigit():
+                    expected[name] = int(qty)
+
+    header_row = data_marker + 1
+    headers = [_cell_str(grid.iat[header_row, c]) for c in range(grid.shape[1])]
+    blocks: list[dict[str, Any]] = []
+    pending_box: int | None = None
+    for col, header in enumerate(headers):
+        name = _norm_header(header)
+        if not name:
+            pending_box = None
+        elif name in BOX_ALIASES:
+            pending_box = col
+        elif name in COUNTRY_ALIASES and blocks:
+            blocks[-1]["country"] = col
+        else:
+            blocks.append({"name": header.strip(), "imei": col, "box": pending_box, "country": None})
+            pending_box = None
+
+    rows: list[dict[str, Any]] = []
+    found: dict[str, int] = {}
+    for block in blocks:
+        box_state = ""
+        country_state = ""
+        for index in range(header_row + 1, grid.shape[0]):
+            if block["box"] is not None:
+                box_state = _cell_str(grid.iat[index, block["box"]]) or box_state
+            if block["country"] is not None:
+                country_state = _cell_str(grid.iat[index, block["country"]]) or country_state
+            imei = _cell_str(grid.iat[index, block["imei"]])
+            if not imei:
+                continue
+            found[block["name"]] = found.get(block["name"], 0) + 1
+            rows.append(
+                {
+                    "row_index": index + 1,
+                    "model_no": block["name"],
+                    "imei": imei,
+                    "box_no": box_state or None,
+                    "country_of_origin": (country_state or None) if invoice_type == "INTERNATIONAL" else None,
+                }
+            )
+
+    problems = [
+        f"{name}: summary says {count}, sheet has {found.get(name, 0)}"
+        for name, count in expected.items()
+        if found.get(name, 0) != count
+    ]
+    problems += [f"{name}: not in the summary" for name in found if expected and name not in expected]
+    if problems:
+        raise SheetCountError("IMEI count does not match the summary. " + "; ".join(problems))
+    if not rows:
+        raise SheetCountError("No IMEIs found. Fill the yellow cells under each model, then upload again.")
+
+    return {
+        "headers": headers,
+        "detected_map": {"model_no": "Model", "imei": "IMEI", "box_no": "Box No"},
+        "effective_map": {"model_no": "Model", "imei": "IMEI", "box_no": "Box No"},
+        "needs_manual_map": False,
+        "rows": rows,
+        "row_count": len(rows),
+        "source_file_name": filename,
+        "sheet_summary": [
+            {"model_no": name, "quantity": found.get(name, 0)} for name in (expected or found)
+        ],
+    }
+
+
 def parse_rows(
     data: bytes,
     filename: str,
@@ -587,6 +703,10 @@ def parse_rows(
     # Packing-sheet layout (model name is the column header). Manual column
     # mapping always uses the flat Model | IMEI | Box parser below.
     if not column_map:
+        # Step 3 template keeps its box numbers in Local too.
+        data_sheet = _try_parse_data_sheet(data, filename, invoice_type)
+        if data_sheet is not None:
+            return data_sheet
         grouped = _try_parse_column_groups(data, filename, invoice_type)
         if grouped is not None:
             return _apply_invoice_mode(grouped, invoice_type)
@@ -672,82 +792,3 @@ def _apply_invoice_mode(result: dict[str, Any], invoice_type: str) -> dict[str, 
             row["box_no"] = None
             row["country_of_origin"] = None
     return result
-
-
-def build_upload_template(invoice_type: str = "LOCAL") -> bytes:
-    """Local template has no box. International adds box number and country of origin."""
-    from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
-    from openpyxl.utils import get_column_letter
-
-    international = invoice_type == "INTERNATIONAL"
-    black = "GALAXY S25 FE 8/256 BLACK"
-    navy = "GALAXY S25 FE 8/256 NAVY"
-    if international:
-        headers = ("Box No", black, "Country of Origin", "Box No", navy, "Country of Origin")
-    else:
-        headers = (black, navy)
-
-    wb = Workbook()
-    sheet = wb.active
-    sheet.title = "IMEI data"
-
-    thin = Border(
-        left=Side(style="thin", color="B0B0B0"),
-        right=Side(style="thin", color="B0B0B0"),
-        top=Side(style="thin", color="B0B0B0"),
-        bottom=Side(style="thin", color="B0B0B0"),
-    )
-    header_font = Font(bold=True, name="Calibri", size=11)
-    header_fill = PatternFill("solid", fgColor="F2F2F2")
-    example_font = Font(name="Calibri", size=11, color="666666", italic=True)
-    example_fill = PatternFill("solid", fgColor="FFF8E5")
-
-    for offset, title in enumerate(headers):
-        cell = sheet.cell(1, offset + 1, title)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal="center", wrap_text=True)
-        cell.border = thin
-
-    if international:
-        examples = [
-            (1, "15-digit IMEI", "INDIA", 1, "15-digit IMEI", "INDIA"),
-            (None, "15-digit IMEI", None, None, "15-digit IMEI", None),
-            (2, "15-digit IMEI", None, 2, "15-digit IMEI", None),
-        ]
-        center_cols = {1, 4}
-        imei_cols = (2, 5)
-        col_widths = (12, 34, 22, 12, 34, 22)
-    else:
-        examples = [
-            ("15-digit IMEI", "15-digit IMEI"),
-            ("15-digit IMEI", "15-digit IMEI"),
-            ("15-digit IMEI", "15-digit IMEI"),
-        ]
-        center_cols: set[int] = set()
-        imei_cols = (1, 2)
-        col_widths = (34, 34)
-
-    for row_index, values in enumerate(examples, start=2):
-        for col_index, value in enumerate(values, start=1):
-            cell = sheet.cell(row_index, col_index, value)
-            cell.font = example_font
-            cell.fill = example_fill
-            cell.border = thin
-            if col_index in center_cols:
-                cell.alignment = Alignment(horizontal="center")
-
-    sheet.freeze_panes = "A2"
-    sheet.row_dimensions[1].height = 20
-    for offset, col_width in enumerate(col_widths):
-        sheet.column_dimensions[get_column_letter(offset + 1)].width = col_width
-    for col in imei_cols:
-        for row in range(2, 203):
-            sheet.cell(row, col).number_format = "@"
-
-    bio = BytesIO()
-    wb.save(bio)
-    return bio.getvalue()
-
-

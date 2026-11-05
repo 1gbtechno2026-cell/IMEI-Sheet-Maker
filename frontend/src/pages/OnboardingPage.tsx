@@ -102,7 +102,7 @@ export function OnboardingPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input
-          className="min-w-[16rem] flex-1 rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+          className="min-w-[16rem] flex-1 rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
           placeholder="Search name, label, state, GSTIN…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -112,9 +112,9 @@ export function OnboardingPage() {
 
       {error && <p className="mb-3 text-sm text-[var(--bad)]">{error}</p>}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10">
+      <div className="overflow-x-auto rounded-xl border border-[var(--line)]">
         <table className="min-w-full text-left text-sm">
-          <thead className="bg-black/30 text-[var(--muted)]">
+          <thead className="bg-[var(--field)] text-[var(--muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">Name</th>
               <th className="px-3 py-2 font-medium">GST</th>
@@ -133,7 +133,7 @@ export function OnboardingPage() {
               </tr>
             ) : (
               companies.map((c) => (
-                <tr key={c.id} className="border-t border-white/10">
+                <tr key={c.id} className="border-t border-[var(--line)]">
                   <td className="px-3 py-2">
                     <div className="font-medium">{c.name}</div>
                   </td>

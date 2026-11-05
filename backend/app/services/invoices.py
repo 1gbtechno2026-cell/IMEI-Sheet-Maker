@@ -15,6 +15,7 @@ from app.models import Company, CompanyGst, Invoice, InvoiceItem, User
 from app.paths import ensure_app_subdirs
 from app.pdf import generate_invoice_pdf
 from app.services import invoice_validation
+from app.services.excel_export import write_invoice_excel
 
 
 def _safe_filename(invoice_no: str) -> str:
@@ -124,6 +125,20 @@ def create_draft(
         for r in validation["rows"]
     ]
     db.bulk_save_objects(items)
+    from app.services import audit as audit_service
+
+    audit_service.write_audit(
+        db,
+        user=user,
+        action="invoice.create",
+        entity="invoice",
+        entity_id=invoice.id,
+        after={
+            "invoice_no": number,
+            "source_file_name": source_file_name,
+            "items": [{"model_no": r["model_no"], "imei": r["imei"]} for r in validation["rows"]],
+        },
+    )
     db.commit()
     db.refresh(invoice)
     # Attach summary from validation for response (avoid lazy-load after bulk insert)
@@ -307,6 +322,8 @@ def update_invoice(
             )
         )
     db.flush()
+    # Reload the new items; the collection still holds the deleted ones.
+    db.expire(invoice, ["items"])
 
     after_pre_pdf = snapshot_invoice(invoice)
     audit_service.write_audit(
@@ -377,14 +394,15 @@ def render_and_finalize(
     filename = f"{_safe_filename(invoice.invoice_no)}.pdf"
     output_path = dirs["invoices"] / filename
 
-    # Replace previous PDF if regenerating
+    # Replace previous PDF (and its Excel copy) if regenerating under a new number
     if invoice.pdf_path and invoice.pdf_path != str(output_path):
         old = Path(invoice.pdf_path)
-        try:
-            if old.is_file():
-                old.unlink()
-        except OSError:
-            pass
+        for stale in (old, old.with_suffix(".xlsx")):
+            try:
+                if stale.is_file():
+                    stale.unlink()
+            except OSError:
+                pass
 
     from app.services.settings_service import get_pdf_footer
 
@@ -397,8 +415,19 @@ def render_and_finalize(
         output_path=output_path,
         footer_text=footer,
     )
+    # Excel copy of the same sheet, next to the PDF.
+    write_invoice_excel(invoice, list(invoice.items), output_path.with_suffix(".xlsx"))
 
+    from app.services import audit as audit_service
 
+    audit_service.write_audit(
+        db,
+        user=user,
+        action="invoice.files",
+        entity="invoice",
+        entity_id=invoice.id,
+        after={"file": output_path.name, "status": "FINAL" if mark_final else invoice.status},
+    )
     invoice.pdf_path = str(output_path)
     if mark_final:
         invoice.status = "FINAL"
@@ -468,3 +497,78 @@ def invoice_to_out(invoice: Invoice, item_count: int | None = None, summary: lis
         "created_at": invoice.created_at,
         "updated_at": invoice.updated_at,
     }
+
+
+def _model_counts(snapshot: dict[str, Any] | None) -> dict[str, int]:
+    counts: dict[str, int] = defaultdict(int)
+    for item in (snapshot or {}).get("items") or []:
+        counts[str(item.get("model_no") or "")] += 1
+    return dict(counts)
+
+
+def _describe_audit(action: str, before: dict[str, Any] | None, after: dict[str, Any] | None) -> list[str]:
+    """Short, readable lines for one audit entry."""
+    if action == "invoice.create":
+        counts = _model_counts(after)
+        lines = [f"Created from {after.get('source_file_name') or 'upload'}" if after else "Created"]
+        lines += [f"{model}: {qty}" for model, qty in counts.items()]
+        return lines
+    if action == "invoice.files":
+        return [f"PDF and Excel created ({(after or {}).get('file', '')})"]
+    if action == "invoice.soft_delete":
+        return ["Deleted"]
+    if action != "invoice.update":
+        return [action]
+
+    before = before or {}
+    after = after or {}
+    lines: list[str] = []
+    labels = {
+        "invoice_no": "Invoice no",
+        "invoice_date": "Date",
+        "seller_id": "Seller",
+        "buyer_id": "Buyer",
+        "invoice_type": "Type",
+        "source_file_name": "File",
+    }
+    for key, label in labels.items():
+        if before.get(key) != after.get(key):
+            lines.append(f"{label}: {before.get(key) or '—'} → {after.get(key) or '—'}")
+    old_counts, new_counts = _model_counts(before), _model_counts(after)
+    for model in dict.fromkeys([*old_counts, *new_counts]):
+        old, new = old_counts.get(model, 0), new_counts.get(model, 0)
+        if old != new:
+            lines.append(f"{model}: {old} → {new}")
+    old_imeis = {i.get("imei") for i in before.get("items") or []}
+    new_imeis = {i.get("imei") for i in after.get("items") or []}
+    added, removed = len(new_imeis - old_imeis), len(old_imeis - new_imeis)
+    if added or removed:
+        lines.append(f"IMEIs: {added} added, {removed} removed")
+    return lines or ["Saved with no data changes"]
+
+
+def invoice_history(db: Session, invoice_id: int) -> list[dict[str, Any]]:
+    import json
+
+    from app.models import AuditLog
+
+    entries = db.scalars(
+        select(AuditLog)
+        .where(AuditLog.entity == "invoice", AuditLog.entity_id == str(invoice_id))
+        .order_by(AuditLog.created_at.desc(), AuditLog.id.desc())
+    ).all()
+    names = {u.id: u.name or u.username for u in db.scalars(select(User)).all()}
+    out = []
+    for entry in entries:
+        before = json.loads(entry.before_json) if entry.before_json else None
+        after = json.loads(entry.after_json) if entry.after_json else None
+        out.append(
+            {
+                "id": entry.id,
+                "action": entry.action.removeprefix("invoice."),
+                "user": names.get(entry.user_id, "—") if entry.user_id else "—",
+                "at": entry.created_at.isoformat() if entry.created_at else None,
+                "changes": _describe_audit(entry.action, before, after),
+            }
+        )
+    return out

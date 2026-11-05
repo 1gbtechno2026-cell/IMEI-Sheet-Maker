@@ -13,7 +13,7 @@ export function GstSelect({ label, gsts, value, onChange }: Props) {
     <label className="block text-sm">
       <span className="mb-1 block text-[var(--muted)]">{label}</span>
       <select
-        className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 text-sm"
+        className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 text-sm"
         value={value ?? ""}
         onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
       >

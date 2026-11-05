@@ -130,14 +130,14 @@ export function SettingsPage() {
 
       <form
         onSubmit={onSave}
-        className="grid max-w-xl gap-4 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5"
+        className="grid max-w-xl gap-4 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5"
       >
         <h2 className="text-sm font-medium">Company settings</h2>
 
         <label className="grid gap-1 text-sm">
           <span className="text-[var(--muted)]">Financial year start month</span>
           <select
-            className="rounded-md border border-white/10 bg-black/30 px-3 py-2"
+            className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
             value={fyStart}
             onChange={(e) => setFyStart(Number(e.target.value))}
           >
@@ -152,7 +152,7 @@ export function SettingsPage() {
         <label className="grid gap-1 text-sm">
           <span className="text-[var(--muted)]">Default currency</span>
           <input
-            className="rounded-md border border-white/10 bg-black/30 px-3 py-2 uppercase"
+            className="rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 uppercase"
             value={currency}
             onChange={(e) => setCurrency(e.target.value)}
             maxLength={10}
@@ -163,7 +163,7 @@ export function SettingsPage() {
         <label className="grid gap-1 text-sm">
           <span className="text-[var(--muted)]">PDF footer / terms</span>
           <textarea
-            className="min-h-[100px] rounded-md border border-white/10 bg-black/30 px-3 py-2"
+            className="min-h-[100px] rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2"
             value={footer}
             onChange={(e) => setFooter(e.target.value)}
             placeholder="Optional terms printed at the bottom of invoices"
@@ -179,7 +179,7 @@ export function SettingsPage() {
         </button>
       </form>
 
-      <section className="max-w-2xl rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+      <section className="max-w-2xl rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
         <h2 className="mb-3 text-sm font-medium">Data folder</h2>
         {settings ? (
           <dl className="space-y-2 text-sm">
@@ -197,13 +197,13 @@ export function SettingsPage() {
         )}
       </section>
 
-      <section className="max-w-2xl space-y-4 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+      <section className="max-w-2xl space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-medium">Backups</h2>
             <p className="mt-1 text-xs text-[var(--muted)]">
               Auto-backup on API start. Manual backup/restore of app.db. Keeps last 10 in /backups.
-              After restore, restart Invoice Maker so the API reloads the database. Installer/app
+              After restore, restart IMEI Data Maker so the API reloads the database. Installer/app
               upgrades never wipe this folder (Windows %APPDATA% or macOS Application Support).
             </p>
           </div>
@@ -229,7 +229,7 @@ export function SettingsPage() {
             </thead>
             <tbody>
               {backups.map((b) => (
-                <tr key={b.filename} className="border-t border-white/10">
+                <tr key={b.filename} className="border-t border-[var(--line)]">
                   <td className="py-2 pr-3 font-mono text-xs">{b.filename}</td>
                   <td className="py-2 pr-3">{formatBytes(b.size_bytes)}</td>
                   <td className="py-2 pr-3 text-xs">{b.modified_at}</td>
@@ -238,7 +238,7 @@ export function SettingsPage() {
                       type="button"
                       disabled={busy}
                       onClick={() => void onRestore(b.filename)}
-                      className="rounded border border-white/15 px-2 py-1 text-xs hover:bg-white/5 disabled:opacity-50"
+                      className="rounded border border-[var(--line-strong)] px-2 py-1 text-xs hover:bg-[var(--hover)] disabled:opacity-50"
                     >
                       Restore
                     </button>

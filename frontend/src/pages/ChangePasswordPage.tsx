@@ -43,12 +43,12 @@ export function ChangePasswordPage() {
         Signed in as <span className="font-mono text-[var(--ink)]">{user.username}</span>. You must set a
         new password before continuing.
       </p>
-      <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-white/10 bg-[var(--panel)]/90 p-5">
+      <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-[var(--line)] bg-[var(--panel)]/90 p-5">
         <label className="block text-sm">
           <span className="mb-1 block text-[var(--muted)]">Current password</span>
           <input
             type="password"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             value={currentPassword}
             onChange={(e) => setCurrentPassword(e.target.value)}
             required
@@ -58,7 +58,7 @@ export function ChangePasswordPage() {
           <span className="mb-1 block text-[var(--muted)]">New password (min 8)</span>
           <input
             type="password"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
             minLength={8}
@@ -69,7 +69,7 @@ export function ChangePasswordPage() {
           <span className="mb-1 block text-[var(--muted)]">Confirm new password</span>
           <input
             type="password"
-            className="w-full rounded-md border border-white/10 bg-black/30 px-3 py-2 outline-none focus:border-[var(--accent)]"
+            className="w-full rounded-md border border-[var(--line)] bg-[var(--field)] px-3 py-2 outline-none focus:border-[var(--accent)]"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             minLength={8}

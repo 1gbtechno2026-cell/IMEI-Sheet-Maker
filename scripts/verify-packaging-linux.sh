@@ -16,7 +16,7 @@ test -f dist-electron/main.js
 echo "==> electron-builder config present (win + mac)"
 test -f electron-builder.yml
 grep -q 'deleteAppDataOnUninstall: false' electron-builder.yml
-grep -q 'productName: Invoice Maker' electron-builder.yml
+grep -q 'productName: IMEI Data Maker' electron-builder.yml
 grep -q 'invoice-maker-backend' electron-builder.yml
 grep -q 'target: dmg' electron-builder.yml
 grep -q 'target: nsis' electron-builder.yml

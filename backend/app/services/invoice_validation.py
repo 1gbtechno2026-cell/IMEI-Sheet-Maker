@@ -58,8 +58,8 @@ def validate_rows(
         country = str(raw.get("country_of_origin") or "").strip() or None
         errors: list[str] = []
 
+        # Local sheets have no country. Box is optional there (set by the scan flow).
         if invoice_type != "INTERNATIONAL":
-            box = None
             country = None
 
         if not model:

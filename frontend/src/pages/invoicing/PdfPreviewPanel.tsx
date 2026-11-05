@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  downloadInvoiceExcel,
   fetchInvoicePdfObjectUrl,
   regeneratePdf,
   type InvoiceRecord,
@@ -88,7 +89,7 @@ export function PdfPreviewPanel({ invoice, onUpdated }: Props) {
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-white/10 bg-[var(--panel)]/70 p-5">
+    <section className="space-y-3 rounded-xl border border-[var(--line)] bg-[var(--panel)]/70 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-medium tracking-wide text-[var(--muted)] uppercase">
@@ -104,15 +105,27 @@ export function PdfPreviewPanel({ invoice, onUpdated }: Props) {
             type="button"
             disabled={!url || busy}
             onClick={() => void onDownload()}
-            className="rounded-md border border-white/10 px-3 py-1.5 text-sm hover:bg-white/5 disabled:opacity-40"
+            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--hover)] disabled:opacity-40"
           >
-            Download
+            Download PDF
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void downloadInvoiceExcel(invoice.id, invoice.invoice_no).catch((err) =>
+                setError(err instanceof Error ? err.message : String(err)),
+              )
+            }
+            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--hover)] disabled:opacity-40"
+          >
+            Download Excel
           </button>
           <button
             type="button"
             disabled={!invoice.pdf_path || busy}
             onClick={() => void onOpenFolder()}
-            className="rounded-md border border-white/10 px-3 py-1.5 text-sm hover:bg-white/5 disabled:opacity-40"
+            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--hover)] disabled:opacity-40"
           >
             Open folder
           </button>
@@ -120,7 +133,7 @@ export function PdfPreviewPanel({ invoice, onUpdated }: Props) {
             type="button"
             disabled={!url || busy}
             onClick={() => void onPrint()}
-            className="rounded-md border border-white/10 px-3 py-1.5 text-sm hover:bg-white/5 disabled:opacity-40"
+            className="rounded-md border border-[var(--line)] px-3 py-1.5 text-sm hover:bg-[var(--hover)] disabled:opacity-40"
           >
             Print
           </button>
@@ -138,7 +151,7 @@ export function PdfPreviewPanel({ invoice, onUpdated }: Props) {
       {error && <p className="text-sm text-[var(--bad)]">{error}</p>}
 
       {url ? (
-        <iframe title="Invoice PDF" src={url} className="h-[70vh] w-full rounded-md border border-white/10 bg-white" />
+        <iframe title="Invoice PDF" src={url} className="h-[70vh] w-full rounded-md border border-[var(--line)] bg-white" />
       ) : (
         <p className="text-sm text-[var(--muted)]">
           {invoice.pdf_path ? "Loading PDF…" : "Generate / finalize to preview the PDF."}
